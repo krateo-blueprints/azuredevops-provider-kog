@@ -11,6 +11,25 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-07 — Phase 1
+
+- Four native kinds, live-verified against a real organisation: `GitRepository` (create, no
+  drift, rename, adoption, soft delete, name reuse), `GitPush` (initial and follow-up pushes;
+  repository `defaultBranch` set), `Pipeline` (create, no drift, rename via PUT+revision,
+  adoption, delete), `PipelinePermission` (grant, spec revoke, drift-free via `defaultIfAbsent`).
+- OpenAPI documents generated from Microsoft's spec archived in Software Heritage (the GitHub repo
+  is gone) and converted to OpenAPI 3.0.3, because rest-dynamic-controller 0.54.0 cannot load
+  Swagger 2.0 (oasgen-provider#499).
+- Measured corrections to Microsoft's document: `{count, value}` list envelopes, push returns 201,
+  create-body `project` dropped (the URL addresses it), narrowed request schemas for pushes and
+  YAML pipelines.
+- `PipelinePermission` ships without a delete verb: the permissions GET always returns 200, so
+  a revoking delete held the finalizer forever (oasgen-provider#502).
+- CI: assets regenerate from recipes; every RestDefinition renders through oasgen-render; query
+  parameters cannot leak into specs; the config chart validates against generated CRDs. Each check
+  was proven by mutation.
+- Upstream issues filed: oasgen-provider #491, #496, #497, #498, #499, #502, #503.
+
 ## 2026-11-07 — Phase 0
 
 - Repository scaffolded on the github-provider-kog layout.

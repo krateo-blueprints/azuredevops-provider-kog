@@ -12,8 +12,16 @@
     "kinds": {
       "type": "array",
       "default": [],
-      "description": "Kinds to render, by Kind name. Empty renders all. The enum grows as kinds land.",
-      "items": { "type": "string" }
+      "description": "Kinds to render, by Kind name. Empty renders all.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "GitPush",
+          "GitRepository",
+          "Pipeline",
+          "PipelinePermission"
+        ]
+      }
     }
   }
 }

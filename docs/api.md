@@ -9,6 +9,9 @@ timestamp: 2026-11-07T00:00:00Z
 
 # API
 
+> Kubernetes note: use fully qualified resource names with kubectl
+> (`gitrepositories.azuredevops.krateo.io`); short names such as `gitrepository` can be ambiguous.
+
 The chart defines no CRDs of its own. For each kind, oasgen-provider 0.54.0 generates:
 
 | Kind | apiVersion |
@@ -19,4 +22,14 @@ The chart defines no CRDs of its own. For each kind, oasgen-provider 0.54.0 gene
 `kubectl get restdefinition <name> -o wide` prints the served version in the `API VERSION` column.
 Write CRs against that version, not `v1alpha1`.
 
-No kind is generated yet (Phase 0). Each kind's spec and status fields are listed here when it lands.
+## Phase 1 kinds
+
+| Kind | apiVersion | spec | status |
+|---|---|---|---|
+| `GitRepository` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `parentRepository` (fork), `sourceRef` (fork) | `id`, `name`, `defaultBranch`, `remoteUrl`, `sshUrl`, `webUrl`, `url` |
+| `GitPush` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (name or id), `refUpdates[]` `{name, oldObjectId}`, `commits[]` `{comment, changes[] {changeType, item.path, newContent {content, contentType}}}` | `pushId`, `date`, `url` |
+| `Pipeline` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `path`, `process {type: 2, yamlFilename}`, `repository {id, type, defaultBranch}` | `id`, `name`, `path`, `revision`, `url`, `queueStatus` |
+| `PipelinePermission` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `resourceType`, `resourceId`, `allPipelines {authorized}`, `pipelines[] {id, authorized}` | `resource` |
+
+Every kind also has `spec.configurationRef` (`{name, namespace}`) and the standard conditions.
+`status` fields are append-only once generated.

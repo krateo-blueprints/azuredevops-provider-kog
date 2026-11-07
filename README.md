@@ -12,8 +12,9 @@ image, no plugin, no proxy.
 It replaces the unmigrated classic azuredevops-provider (hand-written controllers) and the legacy
 azuredevops KOG chart (oasgen-provider 0.10 plus a proxy plugin).
 
-> **Status: Phase 0 (scaffold).** No kind renders yet. See [docs/overview.md](docs/overview.md)
-> for the plan and the design decisions.
+> **Status: Phase 1.** `GitRepository`, `GitPush`, `Pipeline` and `PipelinePermission` are
+> native and live-verified against Azure DevOps. See [docs/overview.md](docs/overview.md) for
+> the per-kind behaviour, the plan and the design decisions.
 
 ## Install
 
@@ -31,13 +32,16 @@ This chart is **mutually exclusive** with the classic provider (same API group).
 ## Configure
 
 Two values: `resourceGroup` (default `azuredevops.krateo.io`) and `kinds` (empty renders all).
-Each kind's generated `<Kind>Configuration` holds the PAT (basic auth) and the `api-version`.
+Each kind's generated `<Kind>Configuration` holds the PAT (basic auth) and the `api-version`;
+the companion `config-chart/` renders them all from one Secret.
 See [docs/configuration.md](docs/configuration.md).
 
 ## Examples
 
 - [examples/dev-cluster](examples/dev-cluster/README.md): local kind cluster with
   oasgen-provider 0.54.0 and the Azure DevOps PAT Secret.
+- [examples/repository-pipeline](examples/repository-pipeline/README.md): repository, initial
+  push, YAML pipeline and pipeline permission, the flow verified live.
 
 ## Docs
 
@@ -52,7 +56,10 @@ See [docs/configuration.md](docs/configuration.md).
 
 ## Develop & release
 
-`helm template` the chart against a substituted copy (the `CHART_VERSION` placeholder fails
+OpenAPI documents are generated, never hand-edited: `hack/fetch-specs.py hack/oas-recipes .specs`
+then `hack/trim-oas.py .specs hack/oas-recipes/<kind>.yaml chart/assets/<kind>.yaml`. CI checks
+freshness and runs `hack/render-check.py` against oasgen-render from the oasgen-provider 0.54.0
+image. `helm template` against a substituted copy (the `CHART_VERSION` placeholder fails
 `helm lint`). Live tests run on [examples/dev-cluster](examples/dev-cluster/README.md) against a
 dedicated, throwaway Azure DevOps organisation. Release: push an annotated `X.Y.Z` tag on `main`
 ([docs/release.md](docs/release.md)).

@@ -28,10 +28,28 @@ nothing.
 | Name→id lookups (identity descriptors, agent pools) | Native `dependentLookups` | The lookup and the write stay in one CR, with one status and one drift comparison. An ambiguous match is a hard error. |
 | Repository initialisation | A dedicated `GitPush` kind | A push is its own observable object (`pushId`, readable via GET). Hiding it inside `GitRepository` would take it out of status and drift. |
 | Pipeline | The whole kind sits on the `build/definitions` API | The update is a PUT of the full definition plus `revision`. Generating the spec from the definition body means the CR already carries the full representation. |
-| No plugin | Response reshaping (`responseTransform`), `fieldMapping` (incl. `defaultIfAbsent`), `async`, pagination | These replace every job the legacy plugin did: folder prefix, `allPipelines`, `defaultBranch`. |
+| No plugin | `fieldMapping` (incl. `defaultIfAbsent`), `requestTransform`/`responseTransform`, `async`, pagination | `allPipelines` is filled by `defaultIfAbsent`. The folder prefix is avoided by using Azure DevOps's own path form. `defaultBranch` waits on oasgen-provider#491 (see below). |
+| Pipeline folder | `spec.path` in Azure DevOps's own form (`'\team\ci'`, root `'\'`) | What the API stores, so it compares directly with no transform. Another spelling drifts. |
+| Repository delete | Azure DevOps's soft delete (recycle bin) | One call, recoverable, and the name is reusable immediately (measured). |
+| OpenAPI format | Microsoft's Swagger 2.0, converted to OpenAPI 3.0.3 at build time | rest-dynamic-controller 0.54.0 loads OpenAPI 3 only (oasgen-provider#499). The conversion changes format, not content. |
+
+## Where the OpenAPI documents come from
+
+`github.com/MicrosoftDocs/vsts-rest-api-specs` no longer exists. Its last full snapshot is in the
+Software Heritage archive (revision `swh:1:rev:c7e66d986b369dce462d04c02288a6c26c155002`). Each
+recipe in `hack/oas-recipes/` pins its source file by content SWHID. `hack/fetch-specs.py`
+fetches exactly those blobs and verifies their hashes, and `hack/trim-oas.py` keeps the declared
+operations, applies the recipe's patches (each must state a reason), and emits OpenAPI 3.0.3. CI
+regenerates every asset and fails on any difference.
+
+Departures from Microsoft's document are corrections to what the API actually does, each
+measured or documented. Examples: list responses are `{count, value}` envelopes, a push returns
+201 rather than 200, and `GitRepositoryCreateOptions.project` is dropped because the URL
+addresses the project.
 
 ## Conventions every kind follows
 
+- **Project:** `spec.project` is the `{project}` path parameter (name or id), never a body object.
 - **Auth:** basic auth with a PAT (in `password`), declared as an OAS `securityScheme`.
 - **`api-version`:** a `configurationFields` entry, so it lives in the Configuration.
 - **Lists:** ADO wraps collections as `{count, value: [...]}`, so `findby` declares `itemsPath: value`.
@@ -48,8 +66,8 @@ nothing.
 
 | Phase | Scope | Exit criterion |
 |---|---|---|
-| 0 | Repo scaffold, docs, generic CI | This bundle passes lint-docs |
-| 1 | `GitRepository`, `GitPush`, `Pipeline`, `PipelinePermission`, plus an `oasgen-render` CI gate, the config chart and kind-specific checks | The three legacy-KOG kinds work natively against a live test org |
+| 0 | Repo scaffold, docs, generic CI | ✅ |
+| 1 | `GitRepository`, `GitPush`, `Pipeline`, `PipelinePermission`, plus an `oasgen-render` CI gate, the config chart and kind-specific checks | ✅ verified live 2026-11-07 (PipelinePermission without delete) |
 | 2 | `TeamProject` (async), `Environment`, `Queue`, `Team`, `CheckConfiguration`, `PullRequest`, `Policy`, `ServiceEndpoint`, `VariableGroup`, `Feed` | Full lifecycle live per kind |
 | 3 | `Group`, `User`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | Permission deletes wait on oasgen-provider #490 |
 | 4 | `Run`, `SecureFile` (observe and delete only) | Full lifecycle live per kind |
@@ -58,9 +76,32 @@ nothing.
 Live testing means: create, then no drift over two poll intervals, update, delete, and re-adoption
 by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 
+## Per-kind behaviour (Phase 1, verified live)
+
+| Kind | Observe | Update | Delete | Notes |
+|---|---|---|---|---|
+| `GitRepository` | findby `name`, then get by `status.id` | PATCH `{name}` (rename) | soft delete (recycle bin) | Adopts an existing repository with the same name. `status.defaultBranch` appears after the first push. |
+| `GitPush` | get by `status.pushId` (no findby) | none (immutable) | none (releases the CR) | `oldObjectId` is compare-and-swap, so a retried push is refused (409), never duplicated. See recovery below. |
+| `Pipeline` | findby `name`+`path` (AND), then get by `status.id` | PUT with `status.id` + `status.revision` | DELETE | PUT replaces the definition: settings made outside the CR are reset. |
+| `PipelinePermission` | get by `{resourceType}/{resourceId}` | PATCH | **none yet** | The GET always returns 200, so the kind converges through update. Deleting a CR leaves the grants (oasgen-provider#502). |
+
+### GitPush: recovering a lost create response
+
+GitPush has no findby on purpose: listing pushes by ref matches pushes made by anyone, so a CR
+could adopt a push it never made. The cost is that if a create succeeds but its response is lost
+(crash, eviction, API error before the status write), the CR has no `pushId`, and the retry is
+refused with 409. The push itself happened exactly once. To recover: confirm the push in Azure
+DevOps, delete the CR (that only releases it), and stop there. To push again, create a new CR
+with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-provider#503.
+
 ## Known upstream dependencies
 
-- **oasgen-provider #490.** A delete whose query parameter comes from a lookup is sent without
-  it when the lookup fails. This blocks the `delete` verb of `RepositoryPermission` and `FeedPermission`.
-- **oasgen-provider #323.** A lookup referent that never appears (for example a mistyped
-  identity) leaves the CR Pending, with no way to tell "not yet" from "never".
+| Issue | Effect here |
+|---|---|
+| oasgen-provider#491 | A field only the update body accepts cannot be a spec field: `GitRepository.defaultBranch` waits on it. |
+| oasgen-provider#499 | rest-dynamic-controller loads OpenAPI 3 only, so documents are converted. |
+| oasgen-provider#502 | No "delete is a reset" for always-present resources: `PipelinePermission` ships without delete. |
+| oasgen-provider#503 | A get-only kind cannot recover a lost create response (GitPush recovery is manual). |
+| oasgen-provider#490 | A delete whose query parameter comes from a lookup is sent without it when the lookup fails: blocks the `delete` verb of `RepositoryPermission` and `FeedPermission`. |
+| oasgen-provider#323 | A lookup referent that never appears (e.g. a mistyped identity) leaves the CR Pending, with no way to tell "not yet" from "never". |
+| oasgen-provider#496, #497, #498 | Uninstall leaves `*Configuration` CRDs, informational notices labelled "generation error:", findby query parameters becoming spec fields (all excluded here). |

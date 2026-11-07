@@ -1,0 +1,5 @@
+# Query parameters that are DELIBERATELY spec fields: create-time inputs, not read options.
+# hack/render-check.py fails on any other query parameter that surfaces in a generated spec.
+# Every entry states why it is desired state.
+GitRepository:
+  sourceRef: "Create-time input for a fork: which source refs to copy into the new repository."

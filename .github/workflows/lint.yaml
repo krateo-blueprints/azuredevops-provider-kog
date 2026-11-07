@@ -6,8 +6,55 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # The oasgen-provider release the chart is built and live-tested against. oasgen-render ships in
+  # this image; preflight-refs resolves this literal reference against the registry.
+  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.54.0
+
 jobs:
   lint-docs:
     uses: krateo-platformops/.github/.github/workflows/lint-docs.yaml@main
-  # Kind-specific checks (kinds-selectable, config-chart-matches, oasgen-render) arrive with the
-  # first kinds in Phase 1. Each is validated by mutating the chart and watching it fail.
+
+  # Every chart/assets/<kind>.yaml is GENERATED from hack/oas-recipes/<kind>.yaml and Microsoft's
+  # archived spec (pinned by SWHID). A hand edit, or a recipe change without regeneration, fails here.
+  oas-assets-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - uses: actions/cache@v4
+        with:
+          path: .specs
+          key: ado-specs-${{ hashFiles('hack/oas-recipes/*.yaml') }}
+      - run: python3 hack/fetch-specs.py hack/oas-recipes .specs
+      - run: python3 hack/trim-oas.py --check .specs hack/oas-recipes chart/assets
+
+  # Renders every RestDefinition through oasgen-provider's own generator (oasgen-render) and fails
+  # on generation errors, on verb query parameters leaking into a spec (excludedSpecFields is
+  # immutable, so this must hold before release), on kinds enum / template guard drift, and on
+  # config-chart objects that do not match the generated Configuration CRDs.
+  render-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - uses: azure/setup-helm@v4
+      - name: Start oasgen-render
+        run: |
+          docker run -d --name oasgen-render -p 8081:8081 --entrypoint /bin/oasgen-render "$OASGEN_IMAGE"
+          for i in $(seq 1 30); do curl -sf localhost:8081/healthz && exit 0; sleep 1; done
+          docker logs oasgen-render; exit 1
+      - name: Render both charts
+        run: |
+          cp -R chart config-chart /tmp/
+          sed -i 's/^version: CHART_VERSION$/version: 0.0.0-ci/' /tmp/chart/Chart.yaml /tmp/config-chart/Chart.yaml
+          helm lint /tmp/chart /tmp/config-chart
+          helm template ado /tmp/chart -n krateo-system > /tmp/render.yaml
+          helm template cfg /tmp/config-chart -n krateo-system > /tmp/render-config.yaml
+      - run: python3 hack/render-check.py /tmp/render.yaml chart http://localhost:8081/render /tmp/render-config.yaml

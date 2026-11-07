@@ -18,15 +18,16 @@ It replaces two unmigrated predecessors. One is the classic, hand-written azured
 oasgen-provider 0.10 plus a proxy plugin). Every kind here is **native**: no plugin, no image,
 no proxy.
 
-> **Status: Phase 0 (scaffold).** No kind is rendered yet. The kinds below are the plan;
-> each lands in its own PR with live-test evidence, and this table is updated when it does.
+> **Status: Phase 1.** Four kinds are native and live-verified against Azure DevOps:
+> `GitRepository`, `GitPush`, `Pipeline` and `PipelinePermission`. The rest are planned, and each
+> lands in its own PR with live-test evidence.
 
-## The kinds (planned)
+## The kinds
 
 | Family | Kinds | Phase |
 |--------|-------|-------|
-| **Repositories** | `GitRepository`, `GitPush`, `PullRequest`, `Policy` | 1 / 2 |
-| **Pipelines** | `Pipeline`, `PipelinePermission`, `Run`, `CheckConfiguration`, `Queue`, `Environment` | 1 / 2 / 4 |
+| **Repositories** | **`GitRepository`**, **`GitPush`** ✅ · `PullRequest`, `Policy` | 1 / 2 |
+| **Pipelines** | **`Pipeline`**, **`PipelinePermission`** ✅ · `Run`, `CheckConfiguration`, `Queue`, `Environment` | 1 / 2 / 4 |
 | **Project & config** | `TeamProject`, `ServiceEndpoint`, `VariableGroup`, `SecureFile` | 2 / 4 |
 | **Artifacts** | `Feed`, `FeedPermission` | 2 / 3 |
 | **Identity & access** | `Team`, `Group`, `User`, `GroupMembership`, `RepositoryPermission` | 2 / 3 |
@@ -47,7 +48,10 @@ The classic provider's `ConnectorConfig` has no equivalent. Each kind gets its o
 
 ## Layout
 
-- `chart/` — the RestDefinitions (`templates/rd-<kind>.yaml`), the trimmed OpenAPI documents
+- `chart/`: the RestDefinitions (`templates/rd-<kind>.yaml`), the OpenAPI documents
   (`assets/<kind>.yaml`, as ConfigMaps) and `values.schema.json`. No Deployment or image.
-- `examples/` — runnable examples, starting with the local development cluster.
-- `hack/` — CI checks.
+- `config-chart/`: one `<Kind>Configuration` per kind, all naming one PAT Secret.
+- `hack/oas-recipes/`: one recipe per kind. Every `chart/assets/<kind>.yaml` is **generated**
+  from Microsoft's archived spec by `hack/trim-oas.py` and never edited by hand.
+- `hack/`: the generator and the CI checks (`render-check.py` runs oasgen's own generator).
+- `examples/`: runnable examples.

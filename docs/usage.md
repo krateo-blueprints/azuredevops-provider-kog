@@ -23,15 +23,30 @@ helm install azuredevops-provider-kog oci://ghcr.io/krateo-blueprints/charts/azu
   --namespace krateo-system
 ```
 
-No version is published yet (Phase 0). Each RestDefinition must report `READY=True` before its
-kind is served:
+No version is published yet. Each RestDefinition must report `READY=True` before its kind is
+served:
 
 ```sh
 kubectl get restdefinitions -n krateo-system -o wide
 ```
 
-After the first apply, read `status.schemaWarnings` on every RestDefinition. An empty list means
-"this render produced no warnings".
+Generation warnings appear in the oasgen-provider log (`Schema generation warning`). On 0.54.0
+`status.schemaWarnings` is not persisted on a fresh install (oasgen-provider#492, fixed in 0.54.1).
+Two warnings are expected and harmless. One says a path parameter "is omitted from the generated
+spec because verb get supplies it" (oasgen-provider#497 tracks the "generation error:" wording).
+The other says `Pipeline`'s findby identifiers "can never match"; that is a false positive, because
+they arrive via `allOf` and adoption by name and path works.
+
+Then provide credentials and the Configurations:
+
+```sh
+kubectl -n krateo-system create secret generic azuredevops-pat \
+  --from-literal=username=kog --from-literal=token="$AZURE_DEVOPS_PAT"
+helm install azuredevops-provider-kog-config \
+  oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog-config --namespace krateo-system
+```
+
+Use a PAT scoped to one organization: global PATs stop working on 2026-12-01.
 
 ## Migrating from the classic provider
 
