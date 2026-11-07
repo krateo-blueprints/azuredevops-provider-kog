@@ -3,7 +3,7 @@
 #   from the Software Heritage archive of github.com/MicrosoftDocs/vsts-rest-api-specs
 # Included: /{organization}/_apis/operations/{operationId} from operations/operations.json (swh:1:cnt:e1b95ea9c6db637a093fae2e2047437c964ae10d)
 # Converted from Swagger 2.0 to OpenAPI 3.0.3 (hack/trim-oas.py to_oas3): rest-dynamic-controller
-#   0.54.0 loads OpenAPI 3 only (oasgen-provider#499). The conversion changes format, not content.
+#   0.54.x loads OpenAPI 3 only (oasgen-provider#499). The conversion changes format, not content.
 # Deliberate departures from the source (see the recipe for each reason):
 #   x-ms-examples removed from every operation (relative refs to unshipped example files)
 #   operationSecurity: every operation declares accessToken (hygiene; inert for oasgen-provider)
