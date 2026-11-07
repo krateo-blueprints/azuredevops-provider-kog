@@ -1,0 +1,111 @@
+# CheckApproval: the Approval check on a protected resource (environment, queue, service connection,
+# repository, variable group, secure file). At most one per resource.
+source:
+  area: approvalsAndChecks
+  file: pipelinesChecks.json
+  swhid: swh:1:cnt:e5411050114d59c98d541017e29482d4789a0ac7
+info:
+  title: Azure DevOps - Approval checks
+keep:
+  '/{organization}/{project}/_apis/pipelines/checks/configurations': [get, post]
+  '/{organization}/{project}/_apis/pipelines/checks/configurations/{id}': [get, patch, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, CheckApproval]
+    value:
+      description: The request fields of an Approval check.
+      type: object
+      required: [type, resource, settings]
+      properties:
+        type:
+          type: object
+          description: Always the Approval check type (defaulted).
+          default: {id: 8c6f20a7-a545-4486-9777-f762fafe0d4d, name: Approval}
+          required: [id]
+          properties:
+            id: {type: string, enum: [8c6f20a7-a545-4486-9777-f762fafe0d4d]}
+            name: {type: string, enum: [Approval]}
+        resource:
+          type: object
+          required: [type, id]
+          properties:
+            type: {type: string, description: 'e.g. environment, queue, endpoint, repository, variablegroup, securefile.'}
+            id: {type: string, description: Id of the protected resource.}
+        timeout: {type: integer, format: int32, description: Minutes before the approval times out.}
+        settings:
+          type: object
+          required: [approvers]
+          properties:
+            approvers:
+              type: array
+              items:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: string, description: Identity id (user or group) of an approver.}
+            minRequiredApprovers: {type: integer, format: int32, description: 0 means all approvers.}
+            instructions: {type: string}
+            executionOrder: {type: string, enum: [anyOrder, inSequence]}
+            requesterCannotBeApprover: {type: boolean}
+            blockedApprovers:
+              type: array
+              items:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: string}
+    reason: >-
+      The source's CheckConfiguration has no `settings` property at all, while a check is defined by
+      its type-specific settings (Microsoft Learn, Check Configurations - Add, 7.1, Approval
+      example). This kind fixes the type to Approval (defaulted, so a CR need not name it) and types
+      its settings. Measured 2026-11-07: the type id comes back lowercased, so the default is
+      lowercase; executionOrder is accepted and returned as a string (anyOrder/inSequence); a
+      second Approval check on the same resource is refused with 400.
+  - op: set
+    at: [definitions, CheckApprovalUpdate]
+    value:
+      description: The update body is the check plus the id it replaces.
+      type: object
+      allOf: [{$ref: '#/definitions/CheckApproval'}]
+      required: [id]
+      properties:
+        id: {type: integer, format: int32}
+    reason: Measured 2026-11-07, PATCH needs the full check including id and type (a partial body returns 400).
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/checks/configurations', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/CheckApproval'}
+    reason: Points the create body at CheckApproval.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/checks/configurations/{id}', patch, parameters, 1, schema]
+    value: {$ref: '#/definitions/CheckApprovalUpdate'}
+    reason: Points the update body at CheckApprovalUpdate.
+  - op: set
+    at: [definitions, CheckConfiguration, properties, settings]
+    value:
+      type: object
+      description: Type-specific settings (returned when requested with $expand=settings).
+      additionalProperties: true
+    reason: >-
+      The source omits `settings` from the response schema too; the API returns it on create and on
+      get with $expand=settings (measured 2026-11-07). Declared so responses are described truthfully.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/checks/configurations', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/CheckConfiguration'}}
+    reason: Measured 2026-11-07, the list returns a {count, value} envelope.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/checks/configurations/{id}', delete, responses]
+    value: {'204': {description: The check was deleted.}}
+    reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.
+  - op: set
+    at: [definitions, CheckConfiguration, properties, version]
+    value: {type: integer, format: int32, description: Increments on every update.}
+    reason: >-
+      Returned by the API on create, get and update (measured 2026-11-07: 1, then 2 after a PATCH)
+      but absent from the source's schema. Without it the status field would be typed string and
+      the API server would reject the integer the controller writes.
