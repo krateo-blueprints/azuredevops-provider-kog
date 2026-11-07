@@ -1,0 +1,23 @@
+# PipelinePermission: which pipelines may use one protected resource (environment, queue,
+# service endpoint, variable group, secure file, repository).
+source:
+  area: approvalsAndChecks
+  file: pipelinePermissions.json
+  swhid: swh:1:cnt:eceab646a8ca2e613c46f2c85d0fe2f85e9048ed
+info:
+  title: Azure DevOps - Pipeline Permissions
+keep:
+  '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}': [get, patch]
+patches:
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}', get, security]
+    value: [{accessToken: []}]
+    reason: >-
+      Every operation in the source overrides the top-level basic `accessToken` scheme with an
+      operation-level oauth2-only requirement. This provider authenticates with a PAT over basic
+      auth, which Azure DevOps documents as valid for every operation, so each kept operation
+      declares accessToken.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}', patch, security]
+    value: [{accessToken: []}]
+    reason: Same as the get operation, for the PAT over basic auth.
