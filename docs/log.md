@@ -24,6 +24,20 @@ Curated history; release notes live in GitHub Releases.
   event on a findby kind's first create, `Warning` only when absence keeps being inferred for the
   same spec generation. Observed exactly once per create in the suite.
 
+## 2026-11-07 — Publish to the helm index, not only GHCR
+
+The organisation adopted one publishing standard (krateo-blueprints/charts `PUBLISHING.md`): a
+chart in GHCR and missing from the helm index is not published, because the Marketplace installs
+from the index.
+
+- **Channel `operators`:** neither chart ships a CompositionDefinition.
+- **Same bytes:** after the shared `release-oci` push, the release pulls both charts back from
+  GHCR and hands those archives to the publisher.
+- **Refuse before publishing:** plain-semver tag, a successful `lint.yaml` run on the tagged
+  commit, and `CHARTS_PUBLISH_TOKEN` present, all checked before GHCR holds anything.
+- **Names are free:** neither `azuredevops-provider-kog` nor `azuredevops-provider-kog-config`
+  had an entry in either channel's index.
+
 ## 2026-11-07 — oasgen-provider 0.54.1
 
 - Re-verified on 0.54.1 before moving the pin: the live cluster upgraded in place (all
