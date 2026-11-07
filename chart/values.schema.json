@@ -36,6 +36,7 @@
           "Queue",
           "RepositoryPermission",
           "Run",
+          "ServiceEndpointUsernamePassword",
           "TeamProject"
         ]
       }
