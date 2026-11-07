@@ -70,6 +70,22 @@ jobs:
             exit 1
           fi
 
+      # The publisher refuses a chart whose Chart.yaml `sources:` does not list this repository, and that
+      # refusal would land after GHCR already holds the version. Check it here, before anything is pushed.
+      - uses: actions/checkout@v4
+      - name: Both charts name this repository in sources
+        env:
+          REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for f in chart/Chart.yaml config-chart/Chart.yaml; do
+            if ! awk '/^sources:/{f=1;next} f&&/^  - /{print $2} f&&!/^  - /{f=0}' "$f" | grep -qxF "$REPO_URL"; then
+              echo "::error::$f does not list $REPO_URL under sources:, so the index publisher would refuse it after the GHCR push."
+              exit 1
+            fi
+            echo "$f lists $REPO_URL"
+          done
+
       # PUBLISHING.md rule 7: one token, no fallback. The publisher checks it can WRITE; a caller can only
       # check presence, so an unset secret stops the release before GHCR.
       - name: The index publish token is configured
