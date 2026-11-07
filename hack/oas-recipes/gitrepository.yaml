@@ -43,3 +43,13 @@ patches:
     at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}', patch, parameters, 1, schema]
     value: {$ref: '#/definitions/GitRepositoryUpdate'}
     reason: Points the PATCH body at GitRepositoryUpdate (see the previous patch).
+  - op: delete
+    at: [definitions, GitRepositoryCreateOptions, properties, project]
+    reason: >-
+      Microsoft documents that "Team project information can be omitted from settings if
+      specified via the URL", and every operation of this kind addresses the project through
+      the {project} path parameter (name or id). When the body does carry `project`, Azure
+      DevOps requires its id to match the URL's. Measured 2026-11-07: a body with only
+      {project: {name}} returns 400 "The project ID in the URI does not match the project ID in
+      the request". Dropping it from the create body uses the documented URL form, and leaves
+      one `project` spec field (the path parameter's string), the same as every other kind.

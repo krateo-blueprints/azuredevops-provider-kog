@@ -176,13 +176,142 @@ def trim(specs, recipe):
     return {k: out[k] for k in order if k in out}
 
 
+PARAM_SCHEMA_KEYS = ("type", "format", "items", "enum", "default", "minimum", "maximum", "pattern",
+                     "minLength", "maxLength", "minItems", "maxItems", "uniqueItems", "multipleOf")
+
+
+def rewrite_refs(node):
+    if isinstance(node, dict):
+        out = {}
+        for k, v in node.items():
+            if k == "$ref" and isinstance(v, str):
+                v = v.replace("#/definitions/", "#/components/schemas/").replace("#/parameters/", "#/components/parameters/")
+            out[k] = rewrite_refs(v)
+        return out
+    if isinstance(node, list):
+        return [rewrite_refs(v) for v in node]
+    return node
+
+
+def check_schema_v2_only(node, where):
+    """Fail on Swagger 2.0 schema constructs whose OpenAPI 3.0 meaning differs, rather than guess."""
+    if isinstance(node, dict):
+        if isinstance(node.get("discriminator"), str):
+            die(f"{where}: Swagger 2.0 string discriminator has no 1:1 OpenAPI 3.0 form; convert it explicitly")
+        if node.get("type") == "file":
+            die(f"{where}: Swagger 2.0 'type: file' is not supported by this converter")
+        for k, v in node.items():
+            check_schema_v2_only(v, f"{where}/{k}")
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            check_schema_v2_only(v, f"{where}/{i}")
+
+
+def convert_param(p, where):
+    if "$ref" in p:
+        return {"$ref": p["$ref"]}
+    if p.get("in") == "formData":
+        die(f"{where}: formData parameters are not supported by this converter")
+    if p.get("in") == "body":
+        die(f"{where}: body parameter reached convert_param")
+    if "collectionFormat" in p and p["collectionFormat"] not in ("csv",):
+        die(f"{where}: collectionFormat {p['collectionFormat']} needs an explicit style/explode mapping")
+    q = {k: v for k, v in p.items() if k not in PARAM_SCHEMA_KEYS and k != "collectionFormat"}
+    schema = {k: p[k] for k in PARAM_SCHEMA_KEYS if k in p}
+    if schema:
+        q["schema"] = schema
+    if p.get("type") == "array" and p.get("in") == "query":
+        q["style"], q["explode"] = "form", False  # Swagger 2.0 default collectionFormat is csv
+    return q
+
+
+def to_oas3(doc):
+    """Translate a trimmed Swagger 2.0 document into OpenAPI 3.0.3, covering the subset these specs
+    use. Anything outside that subset fails loudly (see check_schema_v2_only / convert_param)."""
+    check_schema_v2_only(doc, "")
+    consumes = doc.get("consumes", ["application/json"])
+    produces = doc.get("produces", ["application/json"])
+    scheme = (doc.get("schemes") or ["https"])[0]
+    base = (doc.get("basePath") or "/").rstrip("/")
+    out = {"openapi": "3.0.3", "info": doc["info"], "servers": [{"url": f"{scheme}://{doc['host']}{base}"}]}
+    if "security" in doc:
+        out["security"] = doc["security"]
+    paths = {}
+    for path, item in doc["paths"].items():
+        new_item = {}
+        for k, v in item.items():
+            if k == "parameters":
+                new_item[k] = [convert_param(p, f"{path}/parameters") for p in v]
+                continue
+            if k not in METHODS:
+                new_item[k] = v
+                continue
+            op = {key: val for key, val in v.items() if key not in ("parameters", "responses", "consumes", "produces")}
+            params = []
+            for p in v.get("parameters", []):
+                if p.get("in") == "body":
+                    op["requestBody"] = {
+                        **({"description": p["description"]} if p.get("description") else {}),
+                        "required": bool(p.get("required", False)),
+                        "content": {mt: {"schema": p["schema"]} for mt in v.get("consumes", consumes)},
+                    }
+                else:
+                    params.append(convert_param(p, f"{k.upper()} {path}"))
+            if params:
+                op["parameters"] = params
+            responses = {}
+            for code, r in v.get("responses", {}).items():
+                nr = {"description": r.get("description", "")}
+                if "schema" in r:
+                    nr["content"] = {mt: {"schema": r["schema"]} for mt in v.get("produces", produces)}
+                if "headers" in r:
+                    nr["headers"] = {h: {**({"description": hv["description"]} if hv.get("description") else {}),
+                                         "schema": {kk: hv[kk] for kk in PARAM_SCHEMA_KEYS if kk in hv}}
+                                     for h, hv in r["headers"].items()}
+                responses[str(code)] = nr
+            op["responses"] = responses
+            new_item[k] = op
+        paths[path] = new_item
+    out["paths"] = paths
+    comps = {}
+    if "parameters" in doc:
+        comps["parameters"] = {n: convert_param(p, f"parameters/{n}") for n, p in doc["parameters"].items()}
+    if "definitions" in doc:
+        comps["schemas"] = doc["definitions"]
+    schemes = {}
+    for name, s in (doc.get("securityDefinitions") or {}).items():
+        desc = {"description": s["description"]} if s.get("description") else {}
+        if s["type"] == "basic":
+            schemes[name] = {"type": "http", "scheme": "basic", **desc}
+        elif s["type"] == "apiKey":
+            schemes[name] = {"type": "apiKey", "name": s["name"], "in": s["in"], **desc}
+        elif s["type"] == "oauth2":
+            flow = {"accessCode": "authorizationCode", "implicit": "implicit",
+                    "password": "password", "application": "clientCredentials"}[s["flow"]]
+            f = {"scopes": s.get("scopes", {})}
+            if "authorizationUrl" in s:
+                f["authorizationUrl"] = s["authorizationUrl"]
+            if "tokenUrl" in s:
+                f["tokenUrl"] = s["tokenUrl"]
+            schemes[name] = {"type": "oauth2", "flows": {flow: f}, **desc}
+        else:
+            die(f"securityDefinitions/{name}: type {s['type']} not supported by this converter")
+    if schemes:
+        comps["securitySchemes"] = schemes
+    if comps:
+        out["components"] = comps
+    return rewrite_refs(out)
+
+
 def render(specs, recipe_path):
     recipe = yaml.safe_load(open(recipe_path))
-    doc = trim(specs, recipe)
+    doc = to_oas3(trim(specs, recipe))
     head = [
         "# GENERATED by hack/trim-oas.py from hack/oas-recipes/" + os.path.basename(recipe_path) + " -- do not edit by hand.",
         f"# Source: {recipe['source']['area']}/{recipe['source']['file']} ({recipe['source']['swhid']})",
         "#   from the Software Heritage archive of github.com/MicrosoftDocs/vsts-rest-api-specs",
+        "# Converted from Swagger 2.0 to OpenAPI 3.0.3 (hack/trim-oas.py to_oas3): rest-dynamic-controller",
+        "#   0.54.0 loads OpenAPI 3 only (oasgen-provider#499). The conversion changes format, not content.",
         "# Deliberate departures from the source (see the recipe for each reason):",
     ]
     head.append("#   x-ms-examples removed from every operation (relative refs to unshipped example files)")

@@ -34,36 +34,27 @@ spec:
       - fromOpenAPI: {name: api-version, in: query}
         fromRestDefinition: {actions: ["*"]}
     verbsDescription:
-      # spec.project is the create body's TeamProjectReference ({name} or {id}). Every verb binds the
-      # {project} path parameter from it, so the path parameter never becomes a second, string-typed
-      # `project` spec field. Azure DevOps accepts a project name or id in the path.
+      # spec.project is the {project} path parameter (name or id); the create body carries no
+      # project of its own (see hack/oas-recipes/gitrepository.yaml).
       - action: findby
         method: GET
         path: /{organization}/{project}/_apis/git/repositories
         itemsPath: value
-        fieldMapping: &project
-          - inPath: project
-            inCustomResource: spec.project
-            valueMapping: {type: jq, jq: {inline: '.name // .id'}}
       - action: create
         method: POST
         path: /{organization}/{project}/_apis/git/repositories
-        fieldMapping: *project
       - action: get
         method: GET
         path: /{organization}/{project}/_apis/git/repositories/{repositoryId}
-        fieldMapping: &projectAndId
-          - inPath: project
-            inCustomResource: spec.project
-            valueMapping: {type: jq, jq: {inline: '.name // .id'}}
+        fieldMapping: &repositoryId
           - inPath: repositoryId
             inCustomResource: status.id
       - action: update
         method: PATCH
         path: /{organization}/{project}/_apis/git/repositories/{repositoryId}
-        fieldMapping: *projectAndId
+        fieldMapping: *repositoryId
       - action: delete
         method: DELETE
         path: /{organization}/{project}/_apis/git/repositories/{repositoryId}
-        fieldMapping: *projectAndId
+        fieldMapping: *repositoryId
 {{- end }}
