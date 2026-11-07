@@ -1,0 +1,62 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Environment") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-environment
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-environment/environment.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: Environment
+    # An environment name is unique within a project and known before creation.
+    identifiers:
+      - name
+    # Append-only once generated. id addresses get/update/delete and is what PipelinePermission's
+    # resourceId takes for resourceType=environment.
+    additionalStatusFields:
+      - id
+      - createdOn
+      - lastModifiedOn
+    # Read options of the list and get operations, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - continuationToken
+      - $top
+      - expands
+    # Compare what an update can change: name and description (create and update bodies are equal).
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/distributedtask/environments
+        itemsPath: value
+        # The list filters by name server-side; bound so `name` is not a second spec field.
+        fieldMapping:
+          - inQuery: name
+            inCustomResource: spec.name
+        pagination:
+          type: continuationToken
+          continuationToken:
+            request: {tokenIn: query, tokenPath: continuationToken}
+            response: {tokenIn: header, tokenPath: x-ms-continuationtoken}
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/distributedtask/environments
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/distributedtask/environments/{environmentId}
+        fieldMapping: &environmentId
+          - inPath: environmentId
+            inCustomResource: status.id
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/distributedtask/environments/{environmentId}
+        fieldMapping: *environmentId
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/distributedtask/environments/{environmentId}
+        fieldMapping: *environmentId
+{{- end }}

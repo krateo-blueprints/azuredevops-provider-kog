@@ -1,0 +1,29 @@
+# Environment: a pipeline deployment target in a project (what PipelinePermission, approvals and
+# checks attach to).
+source:
+  area: distributedTask
+  file: taskAgent.json
+  swhid: swh:1:cnt:64b9fcd7116c5bb3e60a98020a0482fc83879d5a
+info:
+  title: Azure DevOps - Environments
+keep:
+  '/{organization}/{project}/_apis/distributedtask/environments': [get, post]
+  '/{organization}/{project}/_apis/distributedtask/environments/{environmentId}': [get, patch, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/distributedtask/environments', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/EnvironmentInstance'}}
+    reason: >-
+      Measured 2026-11-07: the list returns {count, value: [...]} (paginated by
+      x-ms-continuationtoken), not the bare array the source declares; the findby verb's
+      `itemsPath: value` also locates the item schema.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/distributedtask/environments/{environmentId}', delete, responses]
+    value: {'204': {description: The environment was deleted.}}
+    reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.

@@ -16,6 +16,7 @@
       "items": {
         "type": "string",
         "enum": [
+          "Environment",
           "GitPush",
           "GitRepository",
           "Pipeline",
