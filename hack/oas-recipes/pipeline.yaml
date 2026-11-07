@@ -1,0 +1,79 @@
+# Pipeline: a YAML pipeline, modelled on the build-definitions API, the only Azure DevOps API
+# with create, read, update AND delete for pipelines. (The Pipelines API has no update or delete.)
+source:
+  area: build
+  file: build.json
+  swhid: swh:1:cnt:535e999e2d9a439ddcf83be15edbf3aa50b6c561
+info:
+  title: Azure DevOps - Pipelines (build definitions)
+keep:
+  '/{organization}/{project}/_apis/build/definitions': [get, post]
+  '/{organization}/{project}/_apis/build/definitions/{definitionId}': [get, put, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, PipelineDefinition]
+    value:
+      description: >-
+        The request fields of a YAML pipeline definition. The full BuildDefinition also carries
+        designer-pipeline, retention, trigger and server-side fields that do not apply to a YAML
+        pipeline (whose triggers and pool live in its YAML file).
+      type: object
+      required: [name, process, repository]
+      properties:
+        name: {type: string, description: Pipeline name.}
+        path:
+          type: string
+          description: "Folder, in Azure DevOps's own form: '\\' for the root, '\\team\\ci' for a subfolder."
+        process:
+          type: object
+          required: [type, yamlFilename]
+          properties:
+            type: {type: integer, format: int32, enum: [2], description: '2 = YAML process.'}
+            yamlFilename: {type: string, description: Path of the pipeline YAML file in the repository.}
+        repository:
+          type: object
+          required: [id, type]
+          properties:
+            id: {type: string, description: Repository id.}
+            type: {type: string, description: 'Repository type, e.g. TfsGit for Azure Repos.'}
+            defaultBranch: {type: string, description: 'Branch builds default to, e.g. refs/heads/main.'}
+    reason: >-
+      The source types the create body as the full BuildDefinition (designer phases, triggers,
+      retention rules, variables, metrics, latestBuild...), and the CRD spec is generated from it.
+      This names exactly the request fields of a YAML pipeline (Microsoft Learn, Definitions -
+      Create, 7.1, with process type 2). A YAML pipeline's triggers and pool come from its file.
+  - op: set
+    at: [definitions, PipelineDefinitionUpdate]
+    value:
+      description: The update body is the definition plus the id and revision it replaces.
+      type: object
+      required: [id, revision, name, process, repository]
+      allOf: [{$ref: '#/definitions/PipelineDefinition'}]
+      properties:
+        id: {type: integer, format: int32}
+        revision: {type: integer, format: int32, description: Must equal the current revision (optimistic concurrency).}
+    reason: >-
+      PUT replaces the definition and requires its current id and revision. Declaring them
+      lets fieldMapping place status.id and status.revision in the body, and keeps the update
+      body a superset of PipelineDefinition only by those two server-managed fields.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/build/definitions', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/PipelineDefinition'}
+    reason: Points the create body at PipelineDefinition (see above). Responses keep BuildDefinition.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/build/definitions/{definitionId}', put, parameters, 1, schema]
+    value: {$ref: '#/definitions/PipelineDefinitionUpdate'}
+    reason: Points the update body at PipelineDefinitionUpdate (see above).
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/build/definitions', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/BuildDefinitionReference'}}
+    reason: >-
+      Azure DevOps wraps collection responses as {count, value: [...]} (measured live on the
+      repositories list, 2026-11-07); the findby verb declares `itemsPath: value`, which the
+      generator also uses to locate the item schema.
