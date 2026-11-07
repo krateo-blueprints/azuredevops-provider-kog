@@ -11,6 +11,8 @@ A recipe names:
   source:  {area, file, swhid}    the archived file, verified against its SWHID before use
   info:    {title}                the document title (info.version is kept from the source)
   keep:    {<path>: [methods]}    the operations to keep; everything they reference is kept
+  operationSecurity: <name>       optional HYGIENE: every kept operation declares this
+                                  securityDefinitions entry instead of the source's oauth2-only one
   patches: [{op, at, value, reason}]
            The deliberate departures from Microsoft's document. `reason` is required:
            a patch without a stated reason fails. `at` is a list of keys/indexes from the
@@ -128,10 +130,25 @@ def trim(specs, recipe):
             if m not in src["paths"][path]:
                 die(f"keep: {m.upper()} {path} is not in the source")
             item[m] = copy.deepcopy(src["paths"][path][m])
+            # x-ms-examples holds relative $refs to example files (./httpExamples/...) that are not
+            # shipped; a parser that resolves them would fail. They carry no contract, so drop them.
+            item[m].pop("x-ms-examples", None)
         for k, v in src["paths"][path].items():  # path-item level parameters, if any
             if k not in METHODS:
                 item[k] = copy.deepcopy(v)
         out["paths"][path] = item
+    # 0. operationSecurity: HYGIENE. The source overrides the top-level basic scheme with an
+    #    oauth2-only requirement on every operation. oasgen-provider reads only the document-level
+    #    security definitions, so this does not change generation; it keeps the document truthful
+    #    for a provider that authenticates every operation with a PAT over basic auth.
+    sec = recipe.get("operationSecurity")
+    if sec:
+        if sec not in out.get("securityDefinitions", {}):
+            die(f"operationSecurity: '{sec}' is not a securityDefinitions entry of the source")
+        for item in out["paths"].values():
+            for m in METHODS:
+                if m in item:
+                    item[m]["security"] = [{sec: []}]
     # 1. pull in everything the kept operations reference, from the source
     closure(out, src)
     # 2. apply the recipe's deliberate departures, in order
@@ -153,7 +170,10 @@ def trim(specs, recipe):
             out[section] = {n: v for n, v in sorted(out[section].items()) if f"#/{section}/{n}" in live}
             if not out[section]:
                 del out[section]
-    return out
+    # 5. a fixed top-level order, so the output does not depend on reference-walk order
+    order = ["swagger", "info", "host", "basePath", "schemes", "consumes", "produces",
+             "securityDefinitions", "security", "paths", "parameters", "definitions"]
+    return {k: out[k] for k in order if k in out}
 
 
 def render(specs, recipe_path):
@@ -165,6 +185,9 @@ def render(specs, recipe_path):
         "#   from the Software Heritage archive of github.com/MicrosoftDocs/vsts-rest-api-specs",
         "# Deliberate departures from the source (see the recipe for each reason):",
     ]
+    head.append("#   x-ms-examples removed from every operation (relative refs to unshipped example files)")
+    if recipe.get("operationSecurity"):
+        head.append(f"#   operationSecurity: every operation declares {recipe['operationSecurity']} (hygiene; inert for oasgen-provider)")
     for p in recipe.get("patches", []):
         head.append(f"#   {p['op']} {'/'.join(str(a) for a in p['at'])}")
     return "\n".join(head) + "\n" + yaml.safe_dump(doc, sort_keys=False, width=100, allow_unicode=True)

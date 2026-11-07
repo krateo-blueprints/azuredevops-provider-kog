@@ -1,0 +1,52 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "PipelinePermission") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-pipelinepermission
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-pipelinepermission/pipelinepermission.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: PipelinePermission
+    # The protected resource is addressed by the path ({resourceType}/{resourceId}), which the user
+    # knows up front, so `get` observes from the first reconcile and no findby is needed.
+    #
+    # `resource` in the body duplicates the path and is server-echoed; excluding it keeps the
+    # spec to what the user decides: allPipelines and per-pipeline grants. (Immutable list.)
+    excludedSpecFields:
+      - resource
+    additionalStatusFields:
+      - resource
+    # create and update are the same PATCH, so `updatable` is the whole desired state.
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}
+        fieldMapping:
+          # Azure DevOps OMITS allPipelines while it is unauthorized (the default). Without a default
+          # the comparison would see spec.allPipelines.authorized=false against an absent field. This
+          # replaces the legacy plugin's only job for this kind.
+          - inResponse: allPipelines
+            inCustomResource: spec.allPipelines
+            defaultIfAbsent: {authorized: false}
+      - action: create
+        method: PATCH
+        path: /{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}
+      # There is no DELETE: a grant is removed by PATCHing it to authorized=false. Deleting the CR
+      # revokes exactly what it granted: allPipelines and every pipeline the spec lists.
+      - action: delete
+        method: PATCH
+        path: /{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}
+        requestTransform:
+          inline: |
+            {allPipelines: {authorized: false},
+             pipelines: [(.pipelines // [])[] | {id: .id, authorized: false}]}
+{{- end }}

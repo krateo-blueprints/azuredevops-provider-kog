@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "GitRepository") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-gitrepository
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/gitrepository.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  gitrepository.yaml: |
+{{ .Files.Get "assets/gitrepository.yaml" | indent 4 }}
+{{- end }}

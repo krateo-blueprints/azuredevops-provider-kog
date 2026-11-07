@@ -1,0 +1,45 @@
+# GitRepository: a Git repository in a project (create, observe by name, rename, delete; fork via
+# parentRepository + sourceRef).
+source:
+  area: git
+  file: git.json
+  swhid: swh:1:cnt:2daed662633fc64a0bfd0e7389485f0dab55f305
+info:
+  title: Azure DevOps - Git Repositories
+keep:
+  '/{organization}/{project}/_apis/git/repositories': [get, post]
+  '/{organization}/{project}/_apis/git/repositories/{repositoryId}': [get, patch, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/GitRepository'}}
+    reason: >-
+      The source documents the list response as a bare array of GitRepository, but Azure DevOps
+      wraps every collection response as {count, value: [...]}. The findby verb declares
+      `itemsPath: value`, and oasgen-provider uses that same property to locate the item schema,
+      so the document must describe the envelope that is actually returned. TO CONFIRM in the
+      Phase 1 live test.
+  - op: set
+    at: [definitions, GitRepositoryUpdate]
+    value:
+      description: The fields the update operation accepts.
+      type: object
+      properties:
+        name: {type: string, description: The new repository name.}
+        defaultBranch: {type: string, description: 'The new default branch, as a full ref (refs/heads/<branch>).'}
+    reason: >-
+      The source types the PATCH body as the whole GitRepository, while the same operation's
+      own description says it "Updates the Git repository with either a new repo name or a new
+      default branch". `compareScope: updatable` derives the compared fields from this body, so
+      the full schema would make server-managed fields (project, url, size...) look updatable and
+      report drift no PATCH can fix. This names exactly the two fields the operation documents.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}', patch, parameters, 1, schema]
+    value: {$ref: '#/definitions/GitRepositoryUpdate'}
+    reason: Points the PATCH body at GitRepositoryUpdate (see the previous patch).

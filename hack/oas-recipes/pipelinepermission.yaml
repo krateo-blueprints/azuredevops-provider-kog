@@ -8,18 +8,5 @@ info:
   title: Azure DevOps - Pipeline Permissions
 keep:
   '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}': [get, patch]
-patches:
-  - op: set
-    at: [paths, '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}', get, security]
-    value: [{accessToken: []}]
-    reason: >-
-      HYGIENE, not load-bearing. Every operation in the source overrides the top-level basic
-      `accessToken` scheme with an oauth2-only operation-level requirement. oasgen-provider
-      reads only the document-level security schemes (measured at 0.54.0: no reader of
-      operation-level security), so this edit does not change generation. It keeps the document
-      truthful for this provider, which authenticates every operation with a PAT over basic auth.
-      Drop it freely on a source upgrade.
-  - op: set
-    at: [paths, '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}', patch, security]
-    value: [{accessToken: []}]
-    reason: HYGIENE, same as the get operation (inert for oasgen-provider generation).
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
