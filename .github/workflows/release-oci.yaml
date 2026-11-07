@@ -160,11 +160,11 @@ jobs:
   # The org's one publisher. It refuses a wrong channel, another repository's chart name or an
   # already-stored version before writing anything, and succeeds only once the served index lists both
   # charts and `helm pull --repo` installs each anonymously (PUBLISHING.md rule 8).
-  # PIN: replace @1 with the publisher's full commit SHA (`@<sha> # 1.0.0`) before merging, per the
-  # standard; Dependabot then keeps it current.
+  # Pinned by full commit SHA (PUBLISHING.md rule 9): it receives CHARTS_PUBLISH_TOKEN, an org-wide write
+  # token, so a movable ref would let whoever moves it run code with that token. Dependabot keeps it current.
   publish-index:
     needs: [preflight, collect]
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@1
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@a2d63ba50e138b17f678528d6d6be3afef48715a # 1.0.0
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ needs.preflight.outputs.version }}
