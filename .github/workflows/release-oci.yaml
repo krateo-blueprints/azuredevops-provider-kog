@@ -1,0 +1,38 @@
+# Publishes this repo's Helm charts on a release tag. The workflow itself is the org-wide reusable —
+# this file supplies only the triggers (and our OCI path), so "identical across every chart repo"
+# becomes structural instead of a 137-line copy this repo has to keep in step by hand.
+#
+# The shared workflow adds two things our local copy lacked: it STAMPS OCI provenance annotations
+# (org.opencontainers.image.revision/source/version/ref.name) onto each published chart (#38), and
+# it REFUSES to replace an already-published version whose contents differ, skipping it when the
+# contents are identical and pushing only when the version is absent (#39). It also asserts the
+# release tag is contained in main and gates on every chart-referenced image existing — this chart
+# ships no image, so that gate is a no-op for us.
+#
+# oci_repo is overridden to keep publishing to krateo-blueprints/charts (the shared default targets
+# krateo-platformops/charts). secrets.GITHUB_TOKEN is implicit and caller-scoped, so no secrets block
+# is needed; `secrets: inherit` would not work cross-org anyway and is not used.
+name: release-oci
+
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: "Chart version (CHART_VERSION). Default: the git tag."
+        required: false
+      app_version:
+        description: "App image version (APP_VERSION). Default: latest tag of the app repo."
+        required: false
+
+jobs:
+  release-oci:
+    uses: krateo-platformops/.github/.github/workflows/release-oci.yaml@main
+    permissions:
+      contents: read
+      packages: write
+    with:
+      chart_version: ${{ github.event.inputs.chart_version || '' }}
+      app_version: ${{ github.event.inputs.app_version || '' }}
+      oci_repo: oci://ghcr.io/krateo-blueprints/charts

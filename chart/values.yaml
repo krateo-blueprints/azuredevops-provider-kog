@@ -1,0 +1,19 @@
+# Default values for azuredevops-provider-kog.
+#
+# This chart ships RestDefinitions (ogen.krateo.io/v1alpha1) plus the trimmed OpenAPI specs they
+# reference (as ConfigMaps). oasgen-provider, installed cluster-wide, watches the RestDefinitions,
+# generates the CRDs under `resourceGroup`, and deploys one rest-dynamic-controller per kind.
+# This chart ships NO image.
+#
+# When installed as a Krateo component, the CDC generates this chart's CRD from
+# values.schema.json, so keep values flat.
+
+# The API group every generated CRD lands under: each resource kind plus a <Kind>Configuration
+# auth kind for it. azuredevops.krateo.io is the group the unmigrated classic azuredevops-provider
+# also uses, so the two are MUTUALLY EXCLUSIVE on one cluster; see docs/usage.md (migration).
+resourceGroup: azuredevops.krateo.io
+
+# Which kinds to render, by Kind name. Empty renders all. Each RestDefinition runs one
+# rest-dynamic-controller pod whether or not a CR of its kind exists, so this sets the
+# provider's pod count. Before removing a kind from a running install, delete its CRs.
+kinds: []

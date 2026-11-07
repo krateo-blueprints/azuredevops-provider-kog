@@ -1,0 +1,13 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-docs:
+    uses: krateo-platformops/.github/.github/workflows/lint-docs.yaml@main
+  # Kind-specific checks (kinds-selectable, config-chart-matches, oasgen-render) arrive with the
+  # first kinds in Phase 1. Each is validated by mutating the chart and watching it fail.

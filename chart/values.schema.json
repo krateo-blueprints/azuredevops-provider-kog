@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "azuredevops-provider-kog values",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "resourceGroup": {
+      "type": "string",
+      "default": "azuredevops.krateo.io",
+      "description": "API group of every generated CRD. Immutable per RestDefinition once applied."
+    },
+    "kinds": {
+      "type": "array",
+      "default": [],
+      "description": "Kinds to render, by Kind name. Empty renders all. The enum grows as kinds land.",
+      "items": { "type": "string" }
+    }
+  }
+}
