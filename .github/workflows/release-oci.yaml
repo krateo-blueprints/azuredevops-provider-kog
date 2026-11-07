@@ -164,7 +164,7 @@ jobs:
   # token, so a movable ref would let whoever moves it run code with that token. Dependabot keeps it current.
   publish-index:
     needs: [preflight, collect]
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@a2d63ba50e138b17f678528d6d6be3afef48715a # 1.0.0
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@36ea357cb0fe4b49628cc984d9939babf0049d03 # 1.0.1
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ needs.preflight.outputs.version }}
