@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "CheckRequiredTemplate") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-checkrequiredtemplate
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/checkrequiredtemplate.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  checkrequiredtemplate.yaml: |
+{{ .Files.Get "assets/checkrequiredtemplate.yaml" | indent 4 }}
+{{- end }}

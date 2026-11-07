@@ -1,0 +1,175 @@
+# CheckTask: a task-based check on a protected resource (business hours, branch control, invoke Azure
+# function / REST API, ...). Any number per resource.
+source:
+  area: approvalsAndChecks
+  file: pipelinesChecks.json
+  swhid: swh:1:cnt:e5411050114d59c98d541017e29482d4789a0ac7
+info:
+  title: Azure DevOps - Task checks
+keep:
+  /{organization}/{project}/_apis/pipelines/checks/configurations:
+  - post
+  /{organization}/{project}/_apis/pipelines/checks/configurations/{id}:
+  - get
+  - patch
+  - delete
+operationSecurity: accessToken
+patches:
+- op: set
+  at:
+  - definitions
+  - CheckTask
+  value:
+    description: The request fields of a Task Check check.
+    type: object
+    required:
+    - type
+    - resource
+    - settings
+    properties:
+      type:
+        type: object
+        description: Always the Task Check check type (defaulted).
+        default:
+          id: fe1de3ee-a436-41b4-bb20-f6eb4cb879a7
+          name: Task Check
+        required:
+        - id
+        properties:
+          id:
+            type: string
+            enum:
+            - fe1de3ee-a436-41b4-bb20-f6eb4cb879a7
+          name:
+            type: string
+            enum:
+            - Task Check
+      resource:
+        type: object
+        required:
+        - type
+        - id
+        properties:
+          type:
+            type: string
+            description: e.g. environment, queue, endpoint, repository, variablegroup, securefile.
+          id:
+            type: string
+            description: Id of the protected resource.
+      timeout:
+        type: integer
+        format: int32
+        description: Minutes before the check times out.
+      settings:
+        type: object
+        required:
+        - definitionRef
+        - displayName
+        properties:
+          definitionRef:
+            type: object
+            required:
+            - id
+            - name
+            - version
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+                description: e.g. evaluatebusinesshours, evaluatebranchProtection.
+              version:
+                type: string
+          displayName:
+            type: string
+          inputs:
+            type: object
+            description: The task's inputs, as strings.
+            additionalProperties:
+              type: string
+          retryInterval:
+            type: integer
+            format: int32
+            description: Minutes between evaluations.
+          linkedVariableGroup:
+            type: string
+  reason: The source's CheckConfiguration has no `settings` property, while a check is defined by its
+    type-specific settings (Microsoft Learn, Check Configurations - Add, 7.1). This kind fixes the type
+    to Task Check (defaulted) and types its settings (definitionRef, displayName, inputs, retryInterval;
+    echoed as sent, measured 2026-11-07). Azure DevOps allows any number of task checks per resource,
+    even with the same definition and displayName (measured). The type id comes back lowercased, so the
+    default is lowercase.
+- op: set
+  at:
+  - definitions
+  - CheckTaskUpdate
+  value:
+    description: The update body is the check plus the id it replaces.
+    type: object
+    allOf:
+    - $ref: '#/definitions/CheckTask'
+    required:
+    - id
+    properties:
+      id:
+        type: integer
+        format: int32
+  reason: Measured 2026-11-07, PATCH needs the full check including id and type (a partial body returns
+    400).
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations
+  - post
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/CheckTask'
+  reason: Points the create body at CheckTask.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+  - patch
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/CheckTaskUpdate'
+  reason: Points the update body at CheckTaskUpdate.
+- op: set
+  at:
+  - definitions
+  - CheckConfiguration
+  - properties
+  - settings
+  value:
+    type: object
+    description: Type-specific settings (returned when requested with $expand=settings).
+    additionalProperties: true
+  reason: The source omits `settings` from the response schema too; the API returns it on create and on
+    get with $expand=settings (measured 2026-11-07). Declared so responses are described truthfully.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+  - delete
+  - responses
+  value:
+    '204':
+      description: The check was deleted.
+  reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.
+- op: set
+  at:
+  - definitions
+  - CheckConfiguration
+  - properties
+  - version
+  value:
+    type: integer
+    format: int32
+    description: Increments on every update.
+  reason: 'Returned by the API on create, get and update (measured 2026-11-07: 1, then 2 after a PATCH)
+    but absent from the source''s schema. Without it the status field would be typed string and the API
+    server would reject the integer the controller writes.'

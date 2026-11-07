@@ -1,0 +1,161 @@
+# CheckExclusiveLock: the Exclusive lock check on a protected resource (only one run at a time).
+# At most one per resource.
+source:
+  area: approvalsAndChecks
+  file: pipelinesChecks.json
+  swhid: swh:1:cnt:e5411050114d59c98d541017e29482d4789a0ac7
+info:
+  title: Azure DevOps - Exclusive lock checks
+keep:
+  /{organization}/{project}/_apis/pipelines/checks/configurations:
+  - get
+  - post
+  /{organization}/{project}/_apis/pipelines/checks/configurations/{id}:
+  - get
+  - patch
+  - delete
+operationSecurity: accessToken
+patches:
+- op: set
+  at:
+  - definitions
+  - CheckExclusiveLock
+  value:
+    description: The request fields of a ExclusiveLock check.
+    type: object
+    required:
+    - type
+    - resource
+    properties:
+      type:
+        type: object
+        description: Always the ExclusiveLock check type (defaulted).
+        default:
+          id: 2ef31ad6-baa0-403a-8b45-2cbc9b4e5563
+          name: ExclusiveLock
+        required:
+        - id
+        properties:
+          id:
+            type: string
+            enum:
+            - 2ef31ad6-baa0-403a-8b45-2cbc9b4e5563
+          name:
+            type: string
+            enum:
+            - ExclusiveLock
+      resource:
+        type: object
+        required:
+        - type
+        - id
+        properties:
+          type:
+            type: string
+            description: e.g. environment, queue, endpoint, repository, variablegroup, securefile.
+          id:
+            type: string
+            description: Id of the protected resource.
+      timeout:
+        type: integer
+        format: int32
+        description: Minutes before the approval times out.
+  reason: 'The source''s CheckConfiguration has no `settings` property, while a check is defined by its
+    type-specific settings (Microsoft Learn, Check Configurations - Add, 7.1). This kind fixes the type
+    to ExclusiveLock (defaulted). The check has no settings: measured 2026-11-07, created with `settings:
+    {}` and returned with `settings: null`, so the request carries none. A second Exclusive lock check
+    on the same resource is refused with 400 ("Exclusive Lock check already exists"). The type id comes
+    back lowercased, so the default is lowercase.'
+- op: set
+  at:
+  - definitions
+  - CheckExclusiveLockUpdate
+  value:
+    description: The update body is the check plus the id it replaces.
+    type: object
+    allOf:
+    - $ref: '#/definitions/CheckExclusiveLock'
+    required:
+    - id
+    properties:
+      id:
+        type: integer
+        format: int32
+  reason: Measured 2026-11-07, PATCH needs the full check including id and type (a partial body returns
+    400).
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations
+  - post
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/CheckExclusiveLock'
+  reason: Points the create body at CheckExclusiveLock.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+  - patch
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/CheckExclusiveLockUpdate'
+  reason: Points the update body at CheckExclusiveLockUpdate.
+- op: set
+  at:
+  - definitions
+  - CheckConfiguration
+  - properties
+  - settings
+  value:
+    type: object
+    description: Type-specific settings (returned when requested with $expand=settings).
+    additionalProperties: true
+  reason: The source omits `settings` from the response schema too; the API returns it on create and on
+    get with $expand=settings (measured 2026-11-07). Declared so responses are described truthfully.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations
+  - get
+  - responses
+  - '200'
+  - schema
+  value:
+    type: object
+    properties:
+      count:
+        type: integer
+        format: int32
+      value:
+        type: array
+        items:
+          $ref: '#/definitions/CheckConfiguration'
+  reason: Measured 2026-11-07, the list returns a {count, value} envelope.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+  - delete
+  - responses
+  value:
+    '204':
+      description: The check was deleted.
+  reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.
+- op: set
+  at:
+  - definitions
+  - CheckConfiguration
+  - properties
+  - version
+  value:
+    type: integer
+    format: int32
+    description: Increments on every update.
+  reason: 'Returned by the API on create, get and update (measured 2026-11-07: 1, then 2 after a PATCH)
+    but absent from the source''s schema. Without it the status field would be typed string and the API
+    server would reject the integer the controller writes.'

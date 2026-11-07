@@ -17,6 +17,9 @@
         "type": "string",
         "enum": [
           "CheckApproval",
+          "CheckExclusiveLock",
+          "CheckRequiredTemplate",
+          "CheckTask",
           "Environment",
           "GitPush",
           "GitRepository",
