@@ -11,6 +11,14 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-07 — oasgen-provider 0.54.1
+
+- Re-verified on 0.54.1 before moving the pin: the live cluster upgraded in place (all
+  RestDefinitions re-rendered, every controller rolled, every live CR stayed Ready), then a fresh
+  full lifecycle of the four Phase 1 kinds passed 21 of 21 checks.
+- 0.54.1 persists `status.schemaWarnings` (oasgen-provider#492). None of the issues this
+  repository filed is in it; the documented limits are unchanged.
+
 ## 2026-11-07 — Phase 1
 
 - Four native kinds, live-verified against a real organisation: `GitRepository` (create, no

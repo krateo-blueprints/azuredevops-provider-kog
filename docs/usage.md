@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.54.0, provide the Azure DevOps PAT, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.54.1, provide the Azure DevOps PAT, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.54.0 chart).
-- oasgen-provider **0.54.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.54.1 chart).
+- oasgen-provider **0.54.1**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -30,12 +30,14 @@ served:
 kubectl get restdefinitions -n krateo-system -o wide
 ```
 
-Generation warnings appear in the oasgen-provider log (`Schema generation warning`). On 0.54.0
-`status.schemaWarnings` is not persisted on a fresh install (oasgen-provider#492, fixed in 0.54.1).
-Two warnings are expected and harmless. One says a path parameter "is omitted from the generated
-spec because verb get supplies it" (oasgen-provider#497 tracks the "generation error:" wording).
-The other says `Pipeline`'s findby identifiers "can never match"; that is a false positive, because
-they arrive via `allOf` and adoption by name and path works.
+Generation warnings appear on each RestDefinition as `status.schemaWarnings` (and in the
+oasgen-provider log as `Schema generation warning`). The field is omitted when a render produced
+none, so read it together with `status.generatorBuild`: a build at the expected version plus no
+`schemaWarnings` means "rendered, no warnings". Two warnings are expected and harmless. One says
+a path parameter "is omitted from the generated spec because verb get supplies it"
+(oasgen-provider#497 tracks the "generation error:" wording). The other says `Pipeline`'s findby
+identifiers "can never match"; that is a false positive, because they arrive via `allOf` and
+adoption by name and path works.
 
 Then provide credentials and the Configurations:
 

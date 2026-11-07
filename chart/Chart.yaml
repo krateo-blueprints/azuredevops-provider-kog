@@ -1,7 +1,7 @@
 apiVersion: v2
 name: azuredevops-provider-kog
 description: >-
-  Krateo KOG provider (oasgen-provider 0.54.0) exposing Azure DevOps (projects, Git
+  Krateo KOG provider (oasgen-provider 0.54.1) exposing Azure DevOps (projects, Git
   repositories, pipelines, permissions, service connections, variable groups, artifact feeds,
   teams, groups and users) as azuredevops.krateo.io Kubernetes kinds. Every kind is native:
   the chart ships only RestDefinitions and trimmed OpenAPI specs, with no controller image

@@ -1,18 +1,18 @@
 # azuredevops-provider-kog — LLM doc index
-# A Krateo KOG provider (oasgen-provider 0.54.0) exposing Azure DevOps REST resources as
+# A Krateo KOG provider (oasgen-provider 0.54.1) exposing Azure DevOps REST resources as
 # azuredevops.krateo.io Kubernetes kinds. The chart ships RestDefinitions + trimmed OpenAPI documents
 # only (no image, no plugin). Status: Phase 1 — GitRepository, GitPush, Pipeline, PipelinePermission
 # native and live-verified. OAS documents are generated from Microsoft's spec archived in Software
-# Heritage and converted to OpenAPI 3.0.3 (rest-dynamic-controller 0.54.0 loads OAS 3 only).
+# Heritage and converted to OpenAPI 3.0.3 (rest-dynamic-controller 0.54.x loads OAS 3 only).
 docs/index.md: the map — what the provider is, the kinds by family and phase (Phase 1 done), layout
 docs/overview.md: how it works, design decisions, where the OAS documents come from (SWH), conventions, per-kind behaviour table, GitPush recovery, phase plan, upstream dependencies (#491 #499 #502 #503 #490 #323 #496-#498)
-docs/usage.md: install on oasgen-provider 0.54.0, the PAT Secret, migration from the classic provider (mutually exclusive) and the legacy KOG chart
+docs/usage.md: install on oasgen-provider 0.54.1, the PAT Secret, migration from the classic provider (mutually exclusive) and the legacy KOG chart
 docs/configuration.md: chart values, the per-kind <Kind>Configuration, the config chart (values + per-kind verbs/api-version), CI-enforced RestDefinition invariants
 docs/api.md: the generated CRDs, version derivation, Phase 1 kinds' spec/status fields
 docs/examples.md: index of runnable examples
 docs/release.md: one plain-semver tag -> release-oci -> ghcr.io/krateo-blueprints/charts
 docs/log.md: curated history
-examples/dev-cluster/README.md: local kind cluster with oasgen-provider 0.54.0 and the ADO PAT Secret
+examples/dev-cluster/README.md: local kind cluster with oasgen-provider 0.54.1 and the ADO PAT Secret
 examples/repository-pipeline/README.md + 1..5-*.yaml: GitRepository -> GitPush x2 -> Pipeline -> PipelinePermission, with delete semantics
 README.md: the repo front door
 chart/Chart.yaml: chart metadata; version is the CHART_VERSION placeholder

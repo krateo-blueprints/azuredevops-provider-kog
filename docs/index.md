@@ -1,7 +1,7 @@
 ---
 type: Component
 title: azuredevops-provider-kog — index
-description: The map of the azuredevops-provider-kog doc bundle — a Krateo KOG provider that exposes Azure DevOps resources as azuredevops.krateo.io Kubernetes kinds via oasgen-provider 0.54.0, with no plugin.
+description: The map of the azuredevops-provider-kog doc bundle — a Krateo KOG provider that exposes Azure DevOps resources as azuredevops.krateo.io Kubernetes kinds via oasgen-provider 0.54.1, with no plugin.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, oasgen-provider, azure-devops]
 timestamp: 2026-11-07T00:00:00Z
@@ -10,7 +10,7 @@ timestamp: 2026-11-07T00:00:00Z
 # azuredevops-provider-kog
 
 azuredevops-provider-kog is a Krateo **KOG** provider, built on
-[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.54.0**. It
+[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.54.1**. It
 exposes Azure DevOps REST resources as Kubernetes kinds under `azuredevops.krateo.io`.
 
 It replaces two unmigrated predecessors. One is the classic, hand-written azuredevops-provider

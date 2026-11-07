@@ -311,7 +311,7 @@ def render(specs, recipe_path):
         f"# Source: {recipe['source']['area']}/{recipe['source']['file']} ({recipe['source']['swhid']})",
         "#   from the Software Heritage archive of github.com/MicrosoftDocs/vsts-rest-api-specs",
         "# Converted from Swagger 2.0 to OpenAPI 3.0.3 (hack/trim-oas.py to_oas3): rest-dynamic-controller",
-        "#   0.54.0 loads OpenAPI 3 only (oasgen-provider#499). The conversion changes format, not content.",
+        "#   0.54.x loads OpenAPI 3 only (oasgen-provider#499). The conversion changes format, not content.",
         "# Deliberate departures from the source (see the recipe for each reason):",
     ]
     head.append("#   x-ms-examples removed from every operation (relative refs to unshipped example files)")
