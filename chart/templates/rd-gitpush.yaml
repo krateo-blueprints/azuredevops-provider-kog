@@ -1,0 +1,45 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "GitPush") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-gitpush
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-gitpush/gitpush.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: GitPush
+    # A push is immutable and has no delete: once made it is history. pushId is server-assigned,
+    # unique and readable (GET .../pushes/{pushId}), so it is the identity, held in status.
+    # Append-only once generated.
+    additionalStatusFields:
+      - pushId
+      - date
+      - url
+    # The get operation's read options are not desired state. (Immutable list.)
+    excludedSpecFields:
+      - includeCommits
+      - includeRefUpdates
+    # Every spec field is create-only (the push cannot change), and the GET does not echo the
+    # pushed file contents, so `fullSpec` would drift forever with no update to fix it. Compare
+    # only status identity. The documented case for identifiersAndStatus.
+    compareScope: identifiersAndStatus
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    # No findby, deliberately. Listing pushes by ref would match ANY push to that ref (a human's, a
+    # pipeline's, another CR's), so a CR could adopt a push it never made and report Ready for work
+    # it never did. Without findby, observe before the first create has no pushId to get. That
+    # pre-create behaviour was measured on 0.54.0 before this shipped (see docs/overview.md).
+    # No update (immutable) and no delete (a push cannot be undone): deleting the CR only releases it.
+    verbsDescription:
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes/{pushId}
+        fieldMapping:
+          - inPath: pushId
+            inCustomResource: status.pushId
+{{- end }}

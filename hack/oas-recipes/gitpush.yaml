@@ -1,0 +1,84 @@
+# GitPush: one immutable push of commits/ref updates to a repository (e.g. the initial commit
+# that gives a new repository its default branch).
+source:
+  area: git
+  file: git.json
+  swhid: swh:1:cnt:2daed662633fc64a0bfd0e7389485f0dab55f305
+info:
+  title: Azure DevOps - Git Pushes
+keep:
+  '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes': [post]
+  '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes/{pushId}': [get]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, GitPushCreate]
+    value:
+      description: >-
+        The fields a push request carries: the ref updates to apply and the commits to create.
+        Server-assigned fields of GitPush (pushId, date, pushedBy, url, repository) are response-only.
+      type: object
+      required: [refUpdates, commits]
+      properties:
+        refUpdates:
+          type: array
+          items:
+            type: object
+            required: [name, oldObjectId]
+            properties:
+              name: {type: string, description: 'Full ref name, e.g. refs/heads/main.'}
+              oldObjectId: {type: string, description: 'Current object id of the ref; 40 zeros when the ref does not exist yet.'}
+        commits:
+          type: array
+          items:
+            type: object
+            required: [comment, changes]
+            properties:
+              comment: {type: string}
+              changes:
+                type: array
+                items:
+                  type: object
+                  required: [changeType, item]
+                  properties:
+                    changeType:
+                      type: string
+                      enum: [add, edit, delete, rename]
+                    item:
+                      type: object
+                      required: [path]
+                      properties:
+                        path: {type: string, description: 'Repository path, e.g. /README.md.'}
+                    newContent:
+                      type: object
+                      properties:
+                        content: {type: string}
+                        contentType:
+                          type: string
+                          enum: [rawText, base64Encoded]
+    reason: >-
+      The source types the push body as the full GitPush, whose commits are GitCommitRef (author,
+      committer, statuses, workItems... all server-side) and whose Change.item is declared as
+      `type: string, format: T`, a generic-template placeholder, while the API takes an object
+      {path} (Microsoft Learn, Pushes - Create, 7.1: "Initial commit (Create a new branch)"
+      example). The CRD spec is generated from this body, so it must describe what a push request
+      actually carries. changeType is limited to the values a push can request.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/GitPushCreate'}
+    reason: Points the create body at GitPushCreate (see the previous patch). Responses keep GitPush.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes', post, responses, '201']
+    value:
+      description: The push was created.
+      schema: {$ref: '#/definitions/GitPush'}
+    reason: >-
+      Azure DevOps answers a successful push with 201 Created, while the source declares only 200.
+      Measured 2026-11-07: the push was made (pushId 1) and returned 201, and a controller trusting
+      the document treated it as a failure and retried into 409. A retried push is refused by the
+      ref's compare-and-swap, so nothing was pushed twice. The document must describe the status
+      actually returned, so the response is declared under 201.
+  - op: delete
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes', post, responses, '200']
+    reason: Replaced by 201 (see the previous patch); a successful push does not return 200.

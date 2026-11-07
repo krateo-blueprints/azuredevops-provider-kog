@@ -40,13 +40,15 @@ spec:
       - action: update
         method: PATCH
         path: /{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}
-      # There is no DELETE: a grant is removed by PATCHing it to authorized=false. Deleting the CR
-      # revokes exactly what it granted: allPipelines and every pipeline the spec lists.
-      - action: delete
-        method: PATCH
-        path: /{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}
-        requestTransform:
-          inline: |
-            {allPipelines: {authorized: false},
-             pipelines: [(.pipelines // [])[] | {id: .id, authorized: false}]}
+      # NO DELETE VERB (yet). The permissions resource always exists (GET is 200 even with nothing
+      # granted), so after a revoking PATCH the controller cannot verify "gone" and would hold the
+      # finalizer forever (measured on 0.54.0). Revoke-on-delete returns when oasgen-provider#502
+      # (a delete-scoped completion predicate) lands; its proven form is:
+      #   - action: delete
+      #     method: PATCH
+      #     requestTransform: {inline: '{allPipelines: {authorized: false},
+      #                         pipelines: [(.pipelines // [])[] | {id: .id, authorized: false}]}'}
+      # Until then, deleting a CR RELEASES it and LEAVES THE GRANTS IN PLACE. To revoke, set
+      # spec.allPipelines.authorized: false (and each pipeline's authorized: false), let it reconcile,
+      # then delete the CR.
 {{- end }}
