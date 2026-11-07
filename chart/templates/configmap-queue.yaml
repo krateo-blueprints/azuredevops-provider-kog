@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Queue") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-queue
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/queue.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  queue.yaml: |
+{{ .Files.Get "assets/queue.yaml" | indent 4 }}
+{{- end }}

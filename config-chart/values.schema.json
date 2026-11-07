@@ -35,6 +35,7 @@
           "GitRepository",
           "Pipeline",
           "PipelinePermission",
+          "Queue",
           "TeamProject"
         ]
       }
