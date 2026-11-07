@@ -39,8 +39,11 @@ def main(recipes, out):
     wanted = {}
     for fn in sorted(os.listdir(recipes)):
         if fn.endswith(".yaml"):
-            src = yaml.safe_load(open(os.path.join(recipes, fn)))["source"]
-            wanted[(src["area"], src["file"])] = src["swhid"]
+            recipe = yaml.safe_load(open(os.path.join(recipes, fn)))
+            for src in [recipe["source"]] + recipe.get("include", []):
+                prev = wanted.setdefault((src["area"], src["file"]), src["swhid"])
+                if prev != src["swhid"]:
+                    sys.exit(f"fetch-specs: {src['area']}/{src['file']} pinned to two different SWHIDs")
     for (area, name), swhid in sorted(wanted.items()):
         path = os.path.join(out, area, name)
         if os.path.exists(path) and blob_swhid(open(path, "rb").read()) == swhid:

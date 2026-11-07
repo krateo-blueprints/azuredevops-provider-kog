@@ -19,7 +19,8 @@
           "GitPush",
           "GitRepository",
           "Pipeline",
-          "PipelinePermission"
+          "PipelinePermission",
+          "TeamProject"
         ]
       }
     }

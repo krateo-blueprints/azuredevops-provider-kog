@@ -11,6 +11,11 @@ A recipe names:
   source:  {area, file, swhid}    the archived file, verified against its SWHID before use
   info:    {title}                the document title (info.version is kept from the source)
   keep:    {<path>: [methods]}    the operations to keep; everything they reference is kept
+  include: [{area, file, swhid, keep: {<path>: [methods]}}]
+                                  optional: operations taken from ANOTHER archived file, merged in
+                                  (e.g. an async poll endpoint, which oasgen-provider requires to be
+                                  a path of the same document). A definition both files declare must
+                                  be identical, or the run fails rather than pick one.
   operationSecurity: <name>       optional HYGIENE: every kept operation declares this
                                   securityDefinitions entry instead of the source's oauth2-only one
   patches: [{op, at, value, reason}]
@@ -137,6 +142,28 @@ def trim(specs, recipe):
             if k not in METHODS:
                 item[k] = copy.deepcopy(v)
         out["paths"][path] = item
+    # 0a. include: operations from other archived files, with their own closure
+    for inc in recipe.get("include", []):
+        isrc = load_source(specs, inc)
+        if isrc.get("swagger") != src.get("swagger"):
+            die(f"include {inc['file']}: format {isrc.get('swagger')} differs from the source's")
+        part = {"paths": {}}
+        for path, methods in inc["keep"].items():
+            if path in out["paths"]:
+                die(f"include {inc['file']}: path {path} is already kept from the source")
+            if path not in isrc["paths"]:
+                die(f"include {inc['file']}: path {path} is not in that file")
+            part["paths"][path] = {m: copy.deepcopy(isrc["paths"][path][m]) for m in methods}
+            for m in methods:
+                part["paths"][path][m].pop("x-ms-examples", None)
+        closure(part, isrc)
+        out["paths"].update(part["paths"])
+        for section in ("definitions", "parameters"):
+            for name, val in part.get(section, {}).items():
+                have = out.setdefault(section, {}).get(name) or (src.get(section, {}).get(name) if name in src.get(section, {}) else None)
+                if have is not None and have != val:
+                    die(f"include {inc['file']}: {section}/{name} differs between the two files")
+                out[section][name] = val
     # 0. operationSecurity: HYGIENE. The source overrides the top-level basic scheme with an
     #    oauth2-only requirement on every operation. oasgen-provider reads only the document-level
     #    security definitions, so this does not change generation; it keeps the document truthful
@@ -317,6 +344,8 @@ def render(specs, recipe_path):
     head.append("#   x-ms-examples removed from every operation (relative refs to unshipped example files)")
     if recipe.get("operationSecurity"):
         head.append(f"#   operationSecurity: every operation declares {recipe['operationSecurity']} (hygiene; inert for oasgen-provider)")
+    for inc in recipe.get("include", []):
+        head.insert(3, f"# Included: {', '.join(inc['keep'])} from {inc['area']}/{inc['file']} ({inc['swhid']})")
     for p in recipe.get("patches", []):
         head.append(f"#   {p['op']} {'/'.join(str(a) for a in p['at'])}")
     return "\n".join(head) + "\n" + yaml.safe_dump(doc, sort_keys=False, width=100, allow_unicode=True)

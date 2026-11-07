@@ -4,15 +4,39 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "resourceGroup": {"type": "string", "default": "azuredevops.krateo.io"},
-    "configurationName": {"type": "string", "default": "azuredevops"},
-    "secretName": {"type": "string", "default": "azuredevops-pat"},
-    "usernameKey": {"type": "string", "default": "username"},
-    "tokenKey": {"type": "string", "default": "token"},
+    "resourceGroup": {
+      "type": "string",
+      "default": "azuredevops.krateo.io"
+    },
+    "configurationName": {
+      "type": "string",
+      "default": "azuredevops"
+    },
+    "secretName": {
+      "type": "string",
+      "default": "azuredevops-pat"
+    },
+    "usernameKey": {
+      "type": "string",
+      "default": "username"
+    },
+    "tokenKey": {
+      "type": "string",
+      "default": "token"
+    },
     "kinds": {
       "type": "array",
       "default": [],
-      "items": {"type": "string", "enum": ["GitPush", "GitRepository", "Pipeline", "PipelinePermission"]}
+      "items": {
+        "type": "string",
+        "enum": [
+          "GitPush",
+          "GitRepository",
+          "Pipeline",
+          "PipelinePermission",
+          "TeamProject"
+        ]
+      }
     }
   }
 }
