@@ -24,6 +24,21 @@ Curated history; release notes live in GitHub Releases.
   event on a findby kind's first create, `Warning` only when absence keeps being inferred for the
   same spec generation. Observed exactly once per create in the suite.
 
+## 2026-11-08 — Phase 2b
+
+- Five more native kinds, live-verified on oasgen-provider 0.54.1: `PullRequest` (delete abandons;
+  an abandoned PR is absent), `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus`
+  (one typed kind per branch-policy type; soft delete via `isDeleted`), and `Feed` (Azure Artifacts,
+  on `feeds.dev.azure.com`; soft delete, name stays reserved).
+- Measured and recorded in the recipes: one active PR per branch pair, policy uniqueness per type
+  (one-per-branch types 403 a second), false flags omitted from reads (normalised), unset policy
+  settings returned null (dropped), the `validDuration`/`queueOnSourceUpdateOnly` rule.
+- Held: the four one-per-branch policy kinds. Their lifecycle passes, but their identity sits in
+  `settings.scope[0]` and index-path identifiers never match on 0.54.1 (oasgen-provider#517, #519);
+  a pre-existing policy then wedges the CR on a 403 misread as authorisation (#518).
+- Verified on the wire that bracket-escaped `inQuery` bindings are sent (oasgen-provider#514 is
+  generation-only).
+
 ## 2026-11-07 — Phase 2a
 
 - Seven more native kinds, live-verified on oasgen-provider 0.54.1: `TeamProject` (async
