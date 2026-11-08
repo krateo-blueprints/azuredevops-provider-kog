@@ -34,7 +34,10 @@ import copy, hashlib, json, os, sys
 
 import yaml
 
-METHODS = ("get", "put", "post", "delete", "patch")
+# Every operation verb a Swagger 2.0 path item can hold. A key not listed here is copied as path-item
+# level data (parameters), so a missing verb would smuggle an UNKEPT operation into the output: that
+# is how a HEAD operation, with its x-ms-examples refs to unshipped files, once reached an asset.
+METHODS = ("get", "put", "post", "delete", "options", "head", "patch")
 
 
 def die(msg):
