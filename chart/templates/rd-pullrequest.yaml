@@ -22,10 +22,12 @@ spec:
       - creationDate
     # Read options of the list and get operations, not desired state. Names containing dots are
     # bracket-escaped. The two branch filters are BOUND below from spec.sourceRefName/targetRefName and
-    # also excluded here: the 0.54.1 generator does not recognise a bracket-escaped inQuery as
-    # supplying its parameter, so without the exclusion they would surface as duplicate spec fields
-    # (oasgen-provider#514; once fixed the exclusion is redundant, not wrong). The runtime binding is
-    # unaffected: the findby request carries both filters (verified on the wire). (Immutable list.)
+    # also excluded here. Generators before 0.55.0 did not recognise a bracket-escaped inQuery as
+    # supplying its parameter, so they surfaced as duplicate spec fields (oasgen-provider#514, fixed
+    # in 0.55.0: verified that the spec stays clean without these two entries). They are now
+    # redundant but correct, and stay because this list is append-only once released. The runtime
+    # binding was never affected: the findby request carries both filters (verified on the wire).
+    # (Immutable list.)
     excludedSpecFields:
       - supportsIterations
       - maxCommentLength
