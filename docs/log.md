@@ -24,6 +24,19 @@ Curated history; release notes live in GitHub Releases.
   event on a findby kind's first create, `Warning` only when absence keeps being inferred for the
   same spec generation. Observed exactly once per create in the suite.
 
+## 2026-11-07 — Phase 2a
+
+- Seven more native kinds, live-verified on oasgen-provider 0.54.1: `TeamProject` (async
+  create/update/delete via operations), `Environment`, `Queue` (pool by id), and one kind per check
+  type: `CheckApproval`, `CheckExclusiveLock`, `CheckRequiredTemplate`, `CheckTask`.
+- Recipes can `include` an operation from a second archived spec (the projects poll endpoint).
+- Measured corrections, each recorded in its recipe: 202 + operation for project writes, 204 deletes,
+  list envelopes, the plain list overloads where the archive kept the "by ids/names" ones, the
+  missing check `settings` and `version`, lowercased check type ids.
+- Held: `Team` (verified; waits on offset pagination, oasgen-provider#486) and the service-connection
+  kinds (wait on oasgen-provider#510).
+- Upstream issues filed: oasgen-provider #505, #506, #507, #508, #510; measurements posted on #486.
+
 ## 2026-11-07 — oasgen-provider 0.54.1
 
 - Re-verified on 0.54.1 before moving the pin: the live cluster upgraded in place (all

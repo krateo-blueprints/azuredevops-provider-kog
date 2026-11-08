@@ -1,7 +1,8 @@
 # azuredevops-provider-kog — LLM doc index
 # A Krateo KOG provider (oasgen-provider 0.55.0) exposing Azure DevOps REST resources as
 # azuredevops.krateo.io Kubernetes kinds. The chart ships RestDefinitions + trimmed OpenAPI documents
-# only (no image, no plugin). Status: Phase 1 — GitRepository, GitPush, Pipeline, PipelinePermission
+# only (no image, no plugin). Status: Phase 2a — GitRepository, GitPush, Pipeline, PipelinePermission,
+# TeamProject, Environment, Queue, CheckApproval, CheckExclusiveLock, CheckRequiredTemplate, CheckTask
 # native and live-verified. OAS documents are generated from Microsoft's spec archived in Software
 # Heritage and converted to OpenAPI 3.0.3 (rest-dynamic-controller 0.54.x loads OAS 3 only).
 docs/index.md: the map — what the provider is, the kinds by family and phase (Phase 1 done), layout
@@ -19,7 +20,7 @@ chart/Chart.yaml: chart metadata; version is the CHART_VERSION placeholder
 chart/values.yaml: resourceGroup and kinds, with rationale
 chart/values.schema.json: the schema the CDC derives the component CRD from
 chart/templates/_helpers.tpl: kindEnabled helper (empty kinds = all)
-chart/templates/rd-<kind>.yaml + configmap-<kind>.yaml: one RestDefinition + OAS ConfigMap per kind (gitrepository, gitpush, pipeline, pipelinepermission); each RD comments its identity, exclusions, compareScope and verb choices
+chart/templates/rd-<kind>.yaml + configmap-<kind>.yaml: one RestDefinition + OAS ConfigMap per kind (gitrepository, gitpush, pipeline, pipelinepermission, teamproject, environment, queue, checkapproval, checkexclusivelock, checkrequiredtemplate, checktask); each RD comments its identity, exclusions, compareScope and verb choices
 chart/assets/<kind>.yaml: GENERATED OpenAPI 3.0.3 documents (header lists source SWHID and every departure)
 config-chart/: azuredevops-provider-kog-config — one <Kind>Configuration per kind from one PAT Secret, per-verb api-version table in templates/configurations.yaml
 hack/oas-recipes/<kind>.yaml: source SWHID, kept operations, patches each with a reason

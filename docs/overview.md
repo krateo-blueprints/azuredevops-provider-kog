@@ -68,7 +68,10 @@ addresses the project.
 |---|---|---|
 | 0 | Repo scaffold, docs, generic CI | ✅ |
 | 1 | `GitRepository`, `GitPush`, `Pipeline`, `PipelinePermission`, plus an `oasgen-render` CI gate, the config chart and kind-specific checks | ✅ verified live 2026-11-07 (PipelinePermission without delete) |
-| 2 | `TeamProject` (async), `Environment`, `Queue`, `Team`, `CheckConfiguration`, `PullRequest`, `Policy`, `ServiceEndpoint`, `VariableGroup`, `Feed` | Full lifecycle live per kind |
+| 2a | `TeamProject` (async), `Environment`, `Queue`, `CheckApproval`, `CheckExclusiveLock`, `CheckRequiredTemplate`, `CheckTask` | ✅ verified live 2026-11-07 on 0.54.1 |
+| 2b | `PullRequest`, `Policy`, `Feed` | Full lifecycle live per kind |
+| 2c | `ServiceEndpoint*` (per auth scheme), `VariableGroup` | Credentials come from Secrets: wait on oasgen-provider#510 |
+| held | `Team` | Built and verified; held until offset pagination exists (oasgen-provider#486) |
 | 3 | `Group`, `User`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | Permission deletes wait on oasgen-provider #490 |
 | 4 | `Run`, `SecureFile` (observe and delete only) | Full lifecycle live per kind |
 | 5 | Migration guides, deprecation of the predecessors, first release | — |
@@ -76,7 +79,7 @@ addresses the project.
 Live testing means: create, then no drift over two poll intervals, update, delete, and re-adoption
 by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 
-## Per-kind behaviour (Phase 1, verified live)
+## Per-kind behaviour (verified live)
 
 | Kind | Observe | Update | Delete | Notes |
 |---|---|---|---|---|
@@ -84,6 +87,13 @@ by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 | `GitPush` | get by `status.pushId` (no findby) | none (immutable) | none (releases the CR) | `oldObjectId` is compare-and-swap, so a retried push is refused (409), never duplicated. See recovery below. |
 | `Pipeline` | findby `name`+`path` (AND), then get by `status.id` | PUT with `status.id` + `status.revision` | DELETE | PUT replaces the definition: settings made outside the CR are reset. |
 | `PipelinePermission` | get by `{resourceType}/{resourceId}` | PATCH | **none yet** | The GET always returns 200, so the kind converges through update. Deleting a CR leaves the grants (oasgen-provider#502). |
+| `TeamProject` | findby `name` (paginated), then get by `status.id` | PATCH (async) | DELETE (async; recycle bin) | Create/update/delete return 202 + an operation, polled with `mode: requeue` (create/update) or inline (delete). `status.id` is briefly empty after an update until findby re-adopts (oasgen-provider#506). |
+| `Environment` | findby `name` (server-side filter), then get by `status.id` | PATCH | DELETE | — |
+| `Queue` | findby `name` (server-side filter), then get by `status.id` | none | DELETE | **`spec.pool.id` is required for now**: the pool-name lookup is declared but cannot send `api-version` (oasgen-provider#508). |
+| `CheckApproval` | findby type + resource (AND), then get by `status.id` with `$expand=settings` | PATCH (full body + `id`) | DELETE | One per resource (measured). `type` is defaulted. |
+| `CheckExclusiveLock` | as `CheckApproval` | PATCH | DELETE | One per resource; no settings. |
+| `CheckRequiredTemplate` | as `CheckApproval` | PATCH | DELETE | One per resource; `settings.extendsChecks[]`. |
+| `CheckTask` | get by `status.id` only (**no findby**) | PATCH | DELETE | Any number per resource, even with equal names (measured), so it never adopts; a lost create response needs manual recovery (oasgen-provider#503). |
 
 ### GitPush: recovering a lost create response
 
@@ -105,3 +115,9 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#490 | A delete whose query parameter comes from a lookup is sent without it when the lookup fails: blocks the `delete` verb of `RepositoryPermission` and `FeedPermission`. |
 | oasgen-provider#323 | A lookup referent that never appears (e.g. a mistyped identity) leaves the CR Pending, with no way to tell "not yet" from "never". |
 | oasgen-provider#496, #497, #498 | Uninstall leaves `*Configuration` CRDs, informational notices labelled "generation error:", findby query parameters becoming spec fields (all excluded here). |
+| oasgen-provider#505 | `async` paths are plain dot notation (`id`, `status`); a leading dot fails silently after the vendor accepted the call. |
+| oasgen-provider#506 | An async update's operation response replaces status; `TeamProject` recovers `status.id` through findby. |
+| oasgen-provider#507 | Applying a Configuration restarts the controller; `TeamProject` uses `mode: requeue` so a restart never re-sends a create. |
+| oasgen-provider#508 | Dependent lookups cannot send `api-version`: `Queue` needs `spec.pool.id`; Phase 3 identity lookups wait. |
+| oasgen-provider#510 | Every `secretRef` resource fails on 0.53.0+: the service-connection kinds and secret variables wait. |
+| oasgen-provider#486 | No offset pagination (Azure DevOps also needs a short-page signal and cross-page consistency, measured): `Team` is held. |

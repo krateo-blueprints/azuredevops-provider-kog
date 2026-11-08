@@ -59,6 +59,11 @@ the same name and all pointing at one Secret, with the right `api-version` for e
 | `GitPush` | create, get | `7.1` |
 | `Pipeline` | findby, create, get, update, delete | `7.1` |
 | `PipelinePermission` | create, get, update | `7.1-preview.1` |
+| `TeamProject` | findby, create, get, update, delete | `7.1` |
+| `Environment` | findby, create, get, update, delete | `7.1-preview.1` |
+| `Queue` | findby, create, get, delete | `7.1` |
+| `CheckApproval`, `CheckExclusiveLock`, `CheckRequiredTemplate` | findby, create, get, update, delete | `7.1-preview.1` |
+| `CheckTask` | create, get, update, delete | `7.1-preview.1` |
 
 CI renders this chart and validates every object against the Configuration CRDs that oasgen
 actually generates (`hack/render-check.py`). A missing verb, which would send no `api-version`,
@@ -67,7 +72,6 @@ fails the build.
 ## RestDefinition invariants (enforced in CI)
 
 - Every verb's query parameter is either excluded from the spec, bound by a `fieldMapping`, or
-  listed with a reason in `hack/render-check-allow.yaml` (today only `GitRepository.sourceRef`,
-  a fork's create-time input). `excludedSpecFields` is immutable once generated.
+  listed with a reason in `hack/render-check-allow.yaml` (`GitRepository.sourceRef`, a fork's create-time input, and `Queue.authorizePipelines`). `excludedSpecFields` is immutable once generated.
 - The `kinds` enum in `values.schema.json` equals the kinds the templates guard and render.
 - Every `chart/assets/<kind>.yaml` equals what its recipe generates.
