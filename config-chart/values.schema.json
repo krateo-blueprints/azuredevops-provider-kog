@@ -35,6 +35,7 @@
           "CheckRequiredTemplate",
           "CheckTask",
           "Environment",
+          "Feed",
           "GitPush",
           "GitRepository",
           "Pipeline",

@@ -1,0 +1,57 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Feed") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-feed
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-feed/feed.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: Feed
+    # Feed names are unique per project (a second is refused with 409, measured).
+    identifiers:
+      - name
+    # Append-only once generated. id addresses get/update/delete.
+    additionalStatusFields:
+      - id
+      - url
+    # Read options of the list and get operations, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - feedRole
+      - includeDeletedUpstreams
+      - includeUrls
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      # The project's feeds (not paged; feeds in the recycle bin are not listed).
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/packaging/feeds
+        itemsPath: value
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/packaging/feeds
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/packaging/feeds/{feedId}
+        fieldMapping: &feedId
+          - inPath: feedId
+            inCustomResource: status.id
+        # A flag set to false is omitted from reads (measured), so absent means false: normalise it, or
+        # a spec that states false would read as drift.
+        responseTransform: {inline: '{badgesEnabled: false, hideDeletedPackageVersions: false} + .'}
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/packaging/feeds/{feedId}
+        fieldMapping: *feedId
+      # Soft: the feed goes to the feed recycle bin and its NAME STAYS RESERVED, so a CR re-created with
+      # the same name fails with 409 until Azure DevOps releases it (measured: still reserved 10 minutes
+      # after purging the recycle-bin entry).
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/packaging/feeds/{feedId}
+        fieldMapping: *feedId
+{{- end }}

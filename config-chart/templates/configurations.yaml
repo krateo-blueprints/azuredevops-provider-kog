@@ -12,6 +12,7 @@
   "GitRepository"      (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "GitPush"            (dict "create" "7.1" "get" "7.1")
   "Pipeline"           (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
+  "Feed"               (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "PolicyBuildValidation" (dict "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "PolicyRequiredReviewers" (dict "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "PolicyStatus"       (dict "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")

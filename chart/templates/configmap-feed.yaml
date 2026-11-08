@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Feed") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-feed
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/feed.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  feed.yaml: |
+{{ .Files.Get "assets/feed.yaml" | indent 4 }}
+{{- end }}
