@@ -18,6 +18,7 @@
   "PolicyStatus"       (dict "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "PullRequest"        (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "Queue"              (dict "findby" "7.1" "create" "7.1" "get" "7.1" "delete" "7.1")
+  "Run"                (dict "create" "7.1" "get" "7.1")
   "TeamProject"        (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
   "PipelinePermission" (dict "create" "7.1-preview.1" "get" "7.1-preview.1" "update" "7.1-preview.1")
 -}}

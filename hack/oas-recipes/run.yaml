@@ -1,0 +1,49 @@
+# Run: one run of a YAML pipeline. A Run CR triggers the run once and reports its state and result;
+# deleting the CR releases it and keeps the run (its logs and history stay in Azure DevOps).
+source:
+  area: pipelines
+  file: pipelines.json
+  swhid: swh:1:cnt:eddcc056b3e5f8886a3bfd313e573bb5de9acbf5
+info:
+  title: Azure DevOps - Pipeline runs
+keep:
+  '/{organization}/{project}/_apis/pipelines/{pipelineId}/runs': [post]
+  '/{organization}/{project}/_apis/pipelines/{pipelineId}/runs/{runId}': [get]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, RunCreate]
+    value:
+      description: The request fields of a pipeline run.
+      type: object
+      properties:
+        resources:
+          type: object
+          properties:
+            repositories:
+              type: object
+              description: 'Repository resources by name; "self" is the pipeline''s own repository.'
+              additionalProperties:
+                type: object
+                properties:
+                  refName: {type: string, description: 'e.g. refs/heads/main.'}
+                  version: {type: string, description: Commit to run; the head of refName when absent.}
+        templateParameters:
+          type: object
+          description: Values for the YAML pipeline's parameters.
+          additionalProperties: {type: string}
+        stagesToSkip:
+          type: array
+          items: {type: string}
+    reason: >-
+      The source's RunPipelineParameters also carries previewRun (returns the expanded YAML and
+      creates no run, so it cannot be a resource), yamlOverride (only valid with previewRun),
+      variables (a map whose entries may be secret, and this kind takes no secret material), and
+      repository token/tokenType (credentials). Kept: the repository refs, template parameters and
+      stages to skip (Microsoft Learn, Runs - Run Pipeline, 7.1). Measured 2026-11-08: the call returns
+      200 with the run, and every POST starts a new run, even with an identical body.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/pipelines/{pipelineId}/runs', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/RunCreate'}
+    reason: Points the run body at RunCreate.
