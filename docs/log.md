@@ -11,6 +11,19 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-08 — oasgen-provider 0.55.0
+
+- Pin moved from 0.54.1 to 0.55.0 after a live check: the cluster upgraded in place (CRDs chart,
+  then provider chart; every controller rolled, live CRs stayed Ready), then the full scripted
+  suite passed 94/94 against Azure DevOps (every shipped kind: create, no drift, update, delete, and
+  adoption with drift corrected for every findby kind).
+- 0.55.0 fixes oasgen-provider#514: a bracket-escaped `inQuery` binding is recognised as supplying
+  its parameter. `PullRequest` keeps the two escaped exclusions; they are now redundant but still
+  correct, and `excludedSpecFields` is append-only once released.
+- 0.55.0 adds an `AbsenceInferredFromUnmatchedListing` event (oasgen-provider#485): one `Normal`
+  event on a findby kind's first create, `Warning` only when absence keeps being inferred for the
+  same spec generation. Observed exactly once per create in the suite.
+
 ## 2026-11-07 — oasgen-provider 0.54.1
 
 - Re-verified on 0.54.1 before moving the pin: the live cluster upgraded in place (all

@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: azuredevops-provider-kog — overview
-description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.54.1 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
+description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.55.0 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, oasgen-provider, rest-dynamic-controller, azure-devops]
 timestamp: 2026-11-07T00:00:00Z
@@ -21,7 +21,7 @@ nothing.
 
 | Decision | Choice | Why |
 |---|---|---|
-| oasgen-provider | `krateo-platformops/oasgen-provider` **0.54.1**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
+| oasgen-provider | `krateo-platformops/oasgen-provider` **0.55.0**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
 | API group | `azuredevops.krateo.io` | The family convention (`github.krateo.io`). This makes the chart **mutually exclusive** with the classic provider on one cluster; [usage](./usage.md) has the migration. |
 | Kind names | Singular: `Group`, `User`, `SecureFile`, `VariableGroup`, `ServiceEndpoint` | Kubernetes convention. The classic provider used `Groups`, `Users`, `SecureFiles`, `VariableGroups`, `Endpoint`. |
 | References | Azure DevOps names or ids, not Kubernetes `*Ref`s | A RestDefinition resolves values from its own CR. Most ADO paths accept a project or repository name in place of its id. |
