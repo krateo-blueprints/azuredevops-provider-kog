@@ -39,6 +39,7 @@
           "GitRepository",
           "Pipeline",
           "PipelinePermission",
+          "PullRequest",
           "Queue",
           "TeamProject"
         ]

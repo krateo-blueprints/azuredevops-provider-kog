@@ -1,0 +1,86 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "PullRequest") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-pullrequest
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-pullrequest/pullrequest.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: PullRequest
+    # Azure DevOps allows ONE active pull request per source and target branch (TF401179, measured),
+    # so the two refs identify it. Two identifiers: AND explicitly (oasgen-provider#444).
+    identifiers:
+      - sourceRefName
+      - targetRefName
+    # Append-only once generated. pullRequestId addresses get/update/delete.
+    additionalStatusFields:
+      - pullRequestId
+      - status
+      - url
+      - creationDate
+    # Read options of the list and get operations, not desired state. Names containing dots are
+    # bracket-escaped. The two branch filters are BOUND below from spec.sourceRefName/targetRefName and
+    # also excluded here: oasgen-provider 0.54.1 does not recognise a bracket-escaped inQuery as
+    # supplying its parameter, so without the exclusion they would surface as duplicate spec fields
+    # (the documented pattern in oasgen-provider's REAL_EXAMPLES). (Immutable list.)
+    excludedSpecFields:
+      - supportsIterations
+      - maxCommentLength
+      - $skip
+      - $top
+      - includeCommits
+      - includeWorkItemRefs
+      - '["searchCriteria.creatorId"]'
+      - '["searchCriteria.includeLinks"]'
+      - '["searchCriteria.maxTime"]'
+      - '["searchCriteria.minTime"]'
+      - '["searchCriteria.queryTimeRangeType"]'
+      - '["searchCriteria.repositoryId"]'
+      - '["searchCriteria.reviewerId"]'
+      - '["searchCriteria.sourceRepositoryId"]'
+      - '["searchCriteria.status"]'
+      - '["searchCriteria.sourceRefName"]'
+      - '["searchCriteria.targetRefName"]'
+    # Compare what a PATCH can change: title, description, isDraft (status is not a spec field).
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      # The default list returns ACTIVE pull requests only, filtered server-side by both branches.
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests
+        itemsPath: value
+        identifiersMatchPolicy: AND
+        fieldMapping:
+          - inQuery: '["searchCriteria.sourceRefName"]'
+            inCustomResource: spec.sourceRefName
+          - inQuery: '["searchCriteria.targetRefName"]'
+            inCustomResource: spec.targetRefName
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests
+      # An abandoned pull request is ABSENT for this kind: deleting the CR abandons it, and one
+      # abandoned elsewhere is re-opened, since the CR declares that it should exist. A completed
+      # (merged) pull request is present.
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        fieldMapping: &prId
+          - inPath: pullRequestId
+            inCustomResource: status.pullRequestId
+        notFoundBody: {inline: '.status == "abandoned"'}
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        fieldMapping: *prId
+      # No DELETE exists: abandon instead (measured; GET then reports status abandoned).
+      - action: delete
+        method: PATCH
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}
+        fieldMapping: *prId
+        requestTransform: {inline: '{status: "abandoned"}'}
+{{- end }}

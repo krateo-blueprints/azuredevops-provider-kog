@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "PullRequest") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-pullrequest
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/pullrequest.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  pullrequest.yaml: |
+{{ .Files.Get "assets/pullrequest.yaml" | indent 4 }}
+{{- end }}
