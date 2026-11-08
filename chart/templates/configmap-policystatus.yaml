@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "PolicyStatus") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-policystatus
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/policystatus.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  policystatus.yaml: |
+{{ .Files.Get "assets/policystatus.yaml" | indent 4 }}
+{{- end }}

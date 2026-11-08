@@ -39,6 +39,9 @@
           "GitRepository",
           "Pipeline",
           "PipelinePermission",
+          "PolicyBuildValidation",
+          "PolicyRequiredReviewers",
+          "PolicyStatus",
           "PullRequest",
           "Queue",
           "TeamProject"

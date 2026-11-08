@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "PolicyRequiredReviewers") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-policyrequiredreviewers
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/policyrequiredreviewers.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  policyrequiredreviewers.yaml: |
+{{ .Files.Get "assets/policyrequiredreviewers.yaml" | indent 4 }}
+{{- end }}
