@@ -26,7 +26,6 @@
           "Pipeline",
           "PipelinePermission",
           "Queue",
-          "ServiceEndpointUsernamePassword",
           "TeamProject"
         ]
       }
