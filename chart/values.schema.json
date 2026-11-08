@@ -24,6 +24,8 @@
           "Feed",
           "GitPush",
           "GitRepository",
+          "Group",
+          "GroupMembership",
           "Pipeline",
           "PipelinePermission",
           "PolicyBuildValidation",

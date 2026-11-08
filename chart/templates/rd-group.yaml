@@ -1,0 +1,73 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Group") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-group
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-group/group.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: Group
+    # Group names are unique per scope: a create with an existing name returns that group (measured).
+    identifiers:
+      - displayName
+    # Append-only once generated. descriptor addresses get/update/delete and is what a
+    # GroupMembership or a permission references.
+    additionalStatusFields:
+      - descriptor
+      - principalName
+      - originId
+      - domain
+    # Read options of the list operation and the create-time "also add to these groups" option,
+    # not desired state. scopeDescriptor stays: it is the scope the group lives in. (Immutable list.)
+    excludedSpecFields:
+      - groupDescriptors
+      - subjectTypes
+      - continuationToken
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      # The groups of the CR's scope (deleted groups are not listed), paged by continuation token.
+      - action: findby
+        method: GET
+        path: /{organization}/_apis/graph/groups
+        itemsPath: value
+        fieldMapping:
+          - inQuery: scopeDescriptor
+            inCustomResource: spec.scopeDescriptor
+        pagination:
+          type: continuationToken
+          continuationToken:
+            request: {tokenIn: query, tokenPath: continuationToken}
+            response: {tokenIn: header, tokenPath: x-ms-continuationtoken}
+      - action: create
+        method: POST
+        path: /{organization}/_apis/graph/groups
+      # Delete leaves a tombstone: GET keeps answering 200 with isDeleted true (measured), which is
+      # absence here.
+      - action: get
+        method: GET
+        path: /{organization}/_apis/graph/groups/{groupDescriptor}
+        fieldMapping: &groupDescriptor
+          - inPath: groupDescriptor
+            inCustomResource: status.descriptor
+        notFoundBody: {inline: '.isDeleted == true'}
+      # The API accepts only an RFC 6902 patch (a JSON object is refused with 400), and only
+      # "replace" (add is refused, measured), and an empty patch fails with 500. displayName is
+      # required, so the patch always carries at least that operation.
+      - action: update
+        method: PATCH
+        path: /{organization}/_apis/graph/groups/{groupDescriptor}
+        fieldMapping: *groupDescriptor
+        requestTransform:
+          inline: >-
+            [{op: "replace", path: "/displayName", value: .displayName}]
+            + (if .description != null then [{op: "replace", path: "/description", value: .description}] else [] end)
+      - action: delete
+        method: DELETE
+        path: /{organization}/_apis/graph/groups/{groupDescriptor}
+        fieldMapping: *groupDescriptor
+{{- end }}

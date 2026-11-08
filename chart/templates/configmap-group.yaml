@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Group") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-group
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/group.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  group.yaml: |
+{{ .Files.Get "assets/group.yaml" | indent 4 }}
+{{- end }}

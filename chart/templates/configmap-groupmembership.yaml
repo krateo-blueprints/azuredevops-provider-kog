@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "GroupMembership") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-groupmembership
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/groupmembership.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  groupmembership.yaml: |
+{{ .Files.Get "assets/groupmembership.yaml" | indent 4 }}
+{{- end }}
