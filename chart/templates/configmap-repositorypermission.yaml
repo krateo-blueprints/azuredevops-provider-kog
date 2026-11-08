@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "RepositoryPermission") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-repositorypermission
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/repositorypermission.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  repositorypermission.yaml: |
+{{ .Files.Get "assets/repositorypermission.yaml" | indent 4 }}
+{{- end }}

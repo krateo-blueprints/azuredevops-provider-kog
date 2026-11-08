@@ -36,6 +36,7 @@
           "CheckTask",
           "Environment",
           "Feed",
+          "FeedPermission",
           "GitPush",
           "GitRepository",
           "Group",
@@ -47,6 +48,7 @@
           "PolicyStatus",
           "PullRequest",
           "Queue",
+          "RepositoryPermission",
           "Run",
           "TeamProject"
         ]

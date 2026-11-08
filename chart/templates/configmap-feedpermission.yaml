@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "FeedPermission") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-feedpermission
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/feedpermission.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  feedpermission.yaml: |
+{{ .Files.Get "assets/feedpermission.yaml" | indent 4 }}
+{{- end }}

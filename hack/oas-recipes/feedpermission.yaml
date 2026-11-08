@@ -1,0 +1,70 @@
+# FeedPermission: one group's role on an Azure Artifacts feed (feeds.dev.azure.com).
+source:
+  area: artifacts
+  file: feed.json
+  swhid: swh:1:cnt:587fdba5ff1ac37bce807fec9c79d36708d1e300
+info:
+  title: Azure DevOps - Artifacts feed permissions
+keep:
+  /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions:
+  - get
+  - patch
+operationSecurity: accessToken
+patches:
+- op: set
+  at:
+  - definitions
+  - FeedRoleAssignment
+  value:
+    description: The desired role of one group on a feed.
+    type: object
+    required:
+    - subjectDescriptor
+    - role
+    properties:
+      subjectDescriptor:
+        type: string
+        pattern: ^vssgp\.
+        description: The group's Graph descriptor (vssgp.…), e.g. a Group's status.descriptor.
+      role:
+        type: string
+        enum:
+        - reader
+        - collaborator
+        - contributor
+        - administrator
+  reason: 'The source types the PATCH body as an array of FeedPermission keyed by an IDENTITY descriptor. This schema
+    states one assignment in user terms: a group''s Graph descriptor (the identity descriptor is derived from it,
+    measured 2026-11-08) and the role; the transform builds the array. ''none'' is not a desired role here: it is
+    how delete removes the assignment (measured), and ''custom'' cannot be assigned.'
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions
+  - patch
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/FeedRoleAssignment'
+  reason: Points the write body at FeedRoleAssignment (see its reason).
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions
+  - get
+  - responses
+  - '200'
+  - schema
+  value:
+    type: object
+    properties:
+      count:
+        type: integer
+        format: int32
+      value:
+        type: array
+        items:
+          $ref: '#/definitions/FeedPermission'
+  reason: Measured 2026-11-08, the read returns a {count, value} envelope; filtered by identityDescriptor it holds
+    that identity's role ('none' when unassigned).

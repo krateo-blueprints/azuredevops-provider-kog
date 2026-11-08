@@ -1,0 +1,51 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "FeedPermission") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-feedpermission
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-feedpermission/feedpermission.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: FeedPermission
+    # The assignment IS the (feed, identity) pair, both from the spec, so get addresses it directly
+    # and an existing assignment is adopted on the first observe. No identifiers, no findby.
+    # Read options of the read, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - includeIds
+      - excludeInheritedPermissions
+      - includeDeletedFeeds
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: create
+        method: PATCH
+        path: /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions
+        requestTransform: &assign
+          inline: '[{role: .role, identityDescriptor: (.subjectDescriptor | if (type != "string") or (startswith("vssgp.") | not) then error("subjectDescriptor must be a group''s Graph descriptor (vssgp.…), e.g. a Group''s status.descriptor") else (ltrimstr("vssgp.") | @base64d) as $sid | if ($sid | test("^S-1-9-[0-9]+(-[0-9]+)*$")) | not then error("subjectDescriptor does not decode to a group SID") else "Microsoft.TeamFoundation.Identity;" + $sid end end)}]'
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions
+        fieldMapping:
+          - inQuery: identityDescriptor
+            inCustomResource: spec.subjectDescriptor
+            valueMapping: {type: jq, jq: {inline: 'if (type != "string") or (startswith("vssgp.") | not) then error("subjectDescriptor must be a group''s Graph descriptor (vssgp.…), e.g. a Group''s status.descriptor") else (ltrimstr("vssgp.") | @base64d) as $sid | if ($sid | test("^S-1-9-[0-9]+(-[0-9]+)*$")) | not then error("subjectDescriptor does not decode to a group SID") else "Microsoft.TeamFoundation.Identity;" + $sid end end'}}
+        # Unassigned reads as role 'none' (measured).
+        notFoundBody: {inline: '(([.value[]? | .role] | first) // "none") == "none"'}
+        responseTransform: {inline: '{role: ([.value[]? | .role] | first)}'}
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions
+        requestTransform: *assign
+      # Removal is a PATCH to role 'none' (measured). Unlike every other remove measured here it is NOT
+      # idempotent: a second 'none' answers 500, which a stale read can provoke; the controller retries
+      # until the read converges, then releases.
+      - action: delete
+        method: PATCH
+        path: /{organization}/{project}/_apis/packaging/Feeds/{feedId}/permissions
+        requestTransform:
+          inline: '[{role: "none", identityDescriptor: (.subjectDescriptor | if (type != "string") or (startswith("vssgp.") | not) then error("subjectDescriptor must be a group''s Graph descriptor (vssgp.…), e.g. a Group''s status.descriptor") else (ltrimstr("vssgp.") | @base64d) as $sid | if ($sid | test("^S-1-9-[0-9]+(-[0-9]+)*$")) | not then error("subjectDescriptor does not decode to a group SID") else "Microsoft.TeamFoundation.Identity;" + $sid end end)}]'
+{{- end }}
