@@ -21,7 +21,8 @@ A recipe names:
   patches: [{op, at, value, reason}]
            The deliberate departures from Microsoft's document. `reason` is required:
            a patch without a stated reason fails. `at` is a list of keys/indexes from the
-           document root; op is `set` or `delete`.
+           document root; op is `set`, `delete`, or `move` (`from` -> `at`, a rename that
+           never overwrites, e.g. to specialise a templated path segment).
 
 Usage:
   hack/trim-oas.py <specs-dir> <recipe.yaml> <out.yaml>    write one document
@@ -90,7 +91,7 @@ def apply_patch(doc, p):
     if not p.get("reason"):
         die(f"patch {p.get('at')} has no reason; every departure from the source must state one")
     at = p["at"]
-    parent = walk_to(doc, at, create=p["op"] == "set")
+    parent = walk_to(doc, at, create=p["op"] in ("set", "move"))
     last = at[-1]
     if p["op"] == "set":
         parent[last] = copy.deepcopy(p["value"])
@@ -101,8 +102,19 @@ def apply_patch(doc, p):
             del parent[last]
         else:
             die(f"patch delete {at}: nothing there")
+    elif p["op"] == "move":
+        # Rename a key (typically a path, to specialise a templated segment to the one value this
+        # document describes). The value moves unchanged; the destination must not exist, so a move
+        # can never silently overwrite.
+        src = p.get("from") or die(f"patch move {at}: 'from' is required")
+        sparent = walk_to(doc, src)
+        if isinstance(sparent, list) or src[-1] not in sparent:
+            die(f"patch move: {src} does not exist")
+        if not isinstance(parent, list) and last in parent:
+            die(f"patch move: destination {at} already exists")
+        parent[last] = sparent.pop(src[-1])
     else:
-        die(f"patch op '{p['op']}' unknown (set|delete)")
+        die(f"patch op '{p['op']}' unknown (set|delete|move)")
 
 
 def closure(out, src):
