@@ -50,6 +50,9 @@
           "Queue",
           "RepositoryPermission",
           "Run",
+          "ServiceEndpointPersonalAccessToken",
+          "ServiceEndpointServicePrincipal",
+          "ServiceEndpointToken",
           "ServiceEndpointUsernamePassword",
           "TeamProject"
         ]

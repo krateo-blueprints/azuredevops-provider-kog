@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "ServiceEndpointPersonalAccessToken") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-serviceendpointpersonalaccesstoken
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/serviceendpointpersonalaccesstoken.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  serviceendpointpersonalaccesstoken.yaml: |
+{{ .Files.Get "assets/serviceendpointpersonalaccesstoken.yaml" | indent 4 }}
+{{- end }}

@@ -1,0 +1,92 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "ServiceEndpointServicePrincipal") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-serviceendpointserviceprincipal
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-serviceendpointserviceprincipal/serviceendpointserviceprincipal.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: ServiceEndpointServicePrincipal
+    # A connection name is unique within a project and known before creation.
+    identifiers:
+      - name
+    # Append-only once generated. id addresses get/update/delete.
+    additionalStatusFields:
+      - id
+      - isReady
+    # `serviceprincipalkey` is written by the secretRef resolver from serviceprincipalkeySecretRef; excluding it from the
+    # spec means a cleartext secret cannot be put in a CR at all. `operation` (PUT) and `deep`
+    # (DELETE) are request options, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - authorization.parameters.serviceprincipalkey
+      - operation
+      - deep
+      - actionFilter
+    # Compare what a PUT expresses (the whole request body).
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/serviceendpoint/endpoints
+        itemsPath: value
+        fieldMapping:
+          - inQuery: endpointNames
+            inCustomResource: spec.name
+        # Azure DevOps never returns secrets: they come back as null. Dropping null parameters makes
+        # the observed connection comparable with the spec (which holds a Secret reference, not a value).
+        responseTransform: &dropRedacted
+          inline: 'if (.authorization.parameters | type) == "object" then .authorization.parameters |= with_entries(select(.value != null)) else . end'
+      - action: create
+        method: POST
+        path: /{organization}/_apis/serviceendpoint/endpoints
+        fieldMapping:
+          - &secret
+            inBody: authorization.parameters.serviceprincipalkey
+            resolver:
+              type: secretRef
+              secretRef:
+                nameFromCustomResource: spec.authorization.parameters.serviceprincipalkeySecretRef.name
+                keyFromCustomResource: spec.authorization.parameters.serviceprincipalkeySecretRef.key
+        responseTransform: *dropRedacted
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/serviceendpoint/endpoints/{endpointId}
+        fieldMapping:
+          - inPath: endpointId
+            inCustomResource: status.id
+        # A deleted connection answers 200 with a JSON null body, not 404 (measured).
+        notFoundBody: {inline: '. == null'}
+        responseTransform: *dropRedacted
+      - action: update
+        method: PUT
+        path: /{organization}/_apis/serviceendpoint/endpoints/{endpointId}
+        fieldMapping:
+          - inPath: endpointId
+            inCustomResource: status.id
+          - inBody: id
+            inCustomResource: status.id
+          - *secret
+        responseTransform: *dropRedacted
+      # projectIds must be project GUIDs (a name returns 400, measured). It lists EVERY project the
+      # spec shares the connection with: the API removes the connection from the projects named, so
+      # naming only the first would leave it in the others.
+      - action: delete
+        method: DELETE
+        path: /{organization}/_apis/serviceendpoint/endpoints/{endpointId}
+        fieldMapping:
+          - inPath: endpointId
+            inCustomResource: status.id
+          - inQuery: projectIds
+            inCustomResource: spec.serviceEndpointProjectReferences
+            valueMapping:
+              type: jq
+              jq:
+                inline: >-
+                  if (type != "array") or (length == 0) then error("spec.serviceEndpointProjectReferences must list at least one project")
+                  else [.[].projectReference.id] | if any(.[]; (type != "string") or . == "") then error("every serviceEndpointProjectReferences[].projectReference.id must be a project id") else join(",") end end
+{{- end }}
