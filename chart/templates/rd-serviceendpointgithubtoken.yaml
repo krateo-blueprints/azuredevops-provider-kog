@@ -37,10 +37,10 @@ spec:
         fieldMapping:
           - inQuery: endpointNames
             inCustomResource: spec.name
-        # Azure DevOps never returns secrets: they come back as null. Dropping null parameters makes
-        # the observed connection comparable with the spec (which holds a Secret reference, not a value).
-        responseTransform: &dropRedacted
-          inline: 'if (.authorization.parameters | type) == "object" then .authorization.parameters |= with_entries(select(.value != null)) else . end'
+        # Azure DevOps redacts secrets to null on read. No responseTransform drops them: the comparison
+        # only looks at keys the spec holds, and the secret parameter is excluded from the spec. Dropping
+        # them EMPTIED `parameters` for kinds whose only parameter is the secret, and rest-dynamic-controller
+        # reads a CR object against an empty remote object as drift (measured on 0.56.0, Token kind).
       - action: create
         method: POST
         path: /{organization}/_apis/serviceendpoint/endpoints
@@ -56,7 +56,6 @@ spec:
               secretRef:
                 nameFromCustomResource: spec.authorization.parameters.AccessTokenSecretRef.name
                 keyFromCustomResource: spec.authorization.parameters.AccessTokenSecretRef.key
-        responseTransform: *dropRedacted
       - action: get
         method: GET
         path: /{organization}/{project}/_apis/serviceendpoint/endpoints/{endpointId}
@@ -65,7 +64,6 @@ spec:
             inCustomResource: status.id
         # A deleted connection answers 200 with a JSON null body, not 404 (measured).
         notFoundBody: {inline: '. == null'}
-        responseTransform: *dropRedacted
       - action: update
         method: PUT
         path: /{organization}/_apis/serviceendpoint/endpoints/{endpointId}
@@ -75,7 +73,6 @@ spec:
           - inBody: id
             inCustomResource: status.id
           - *secret
-        responseTransform: *dropRedacted
       # projectIds must be project GUIDs (a name returns 400, measured). It lists EVERY project the
       # spec shares the connection with: the API removes the connection from the projects named, so
       # naming only the first would leave it in the others.
