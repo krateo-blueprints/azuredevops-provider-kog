@@ -1,7 +1,7 @@
 ---
 type: Component
 title: azuredevops-provider-kog — index
-description: The map of the azuredevops-provider-kog doc bundle — a Krateo KOG provider that exposes Azure DevOps resources as azuredevops.krateo.io Kubernetes kinds via oasgen-provider 0.55.0, with no plugin.
+description: The map of the azuredevops-provider-kog doc bundle — a Krateo KOG provider that exposes Azure DevOps resources as azuredevops.krateo.io Kubernetes kinds via oasgen-provider 0.56.0, with no plugin.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, oasgen-provider, azure-devops]
 timestamp: 2026-11-07T00:00:00Z
@@ -10,7 +10,7 @@ timestamp: 2026-11-07T00:00:00Z
 # azuredevops-provider-kog
 
 azuredevops-provider-kog is a Krateo **KOG** provider, built on
-[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.55.0**. It
+[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.56.0**. It
 exposes Azure DevOps REST resources as Kubernetes kinds under `azuredevops.krateo.io`.
 
 It replaces two unmigrated predecessors. One is the classic, hand-written azuredevops-provider
@@ -18,7 +18,7 @@ It replaces two unmigrated predecessors. One is the classic, hand-written azured
 oasgen-provider 0.10 plus a proxy plugin). Every kind here is **native**: no plugin, no image,
 no proxy.
 
-> **Status: Phase 3.** Twenty-one kinds are native and live-verified against Azure DevOps. The rest
+> **Status: Phase 2c.** Twenty-five kinds are native and live-verified against Azure DevOps. The rest
 > are planned or wait on named oasgen-provider issues (see [overview](./overview.md)); each lands
 > in its own PR with live-test evidence.
 
@@ -28,7 +28,7 @@ no proxy.
 |--------|-------|-------|
 | **Repositories** | **`GitRepository`**, **`GitPush`**, **`PullRequest`**, **`PolicyBuildValidation`**, **`PolicyRequiredReviewers`**, **`PolicyStatus`** ✅ · one-per-branch policies (held for #517) | 1 / 2b / held |
 | **Pipelines** | **`Pipeline`**, **`PipelinePermission`**, **`Environment`**, **`Queue`**, **`CheckApproval`**, **`CheckExclusiveLock`**, **`CheckRequiredTemplate`**, **`CheckTask`**, **`Run`** ✅ | 1 / 2a / 4 |
-| **Project & config** | **`TeamProject`** ✅ · `ServiceEndpoint*`, `VariableGroup` (wait on #510), `SecureFile` (waits on #521, #510) | 2a / 2c / 4 |
+| **Project & config** | **`TeamProject`**, **`ServiceEndpointUsernamePassword`**, **`ServiceEndpointToken`**, **`ServiceEndpointGitHubToken`**, **`ServiceEndpointServicePrincipal`** ✅ · `VariableGroup` (planned: its secrets are a map), `SecureFile` (waits on #521) | 2a / 2c / 4 |
 | **Artifacts** | **`Feed`**, **`FeedPermission`** ✅ | 2b / 3 |
 | **Identity & access** | **`Group`**, **`GroupMembership`**, **`RepositoryPermission`** ✅ · `Team` (held for #486), `User` (held for #529) | 3 / held |
 

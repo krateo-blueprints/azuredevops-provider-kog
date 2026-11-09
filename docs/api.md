@@ -12,7 +12,7 @@ timestamp: 2026-11-07T00:00:00Z
 > Kubernetes note: use fully qualified resource names with kubectl
 > (`gitrepositories.azuredevops.krateo.io`); short names such as `gitrepository` can be ambiguous.
 
-The chart defines no CRDs of its own. For each kind, oasgen-provider 0.55.0 generates:
+The chart defines no CRDs of its own. For each kind, oasgen-provider 0.56.0 generates:
 
 | Kind | apiVersion |
 |---|---|
@@ -47,6 +47,10 @@ Write CRs against that version, not `v1alpha1`.
 | `GroupMembership` | `azuredevops.krateo.io/v7-1` | `organization`, `subjectDescriptor`, `containerDescriptor` | `memberDescriptor`, `containerDescriptor` |
 | `RepositoryPermission` | `azuredevops.krateo.io/v7-1` | `organization`, `projectId`, `repositoryId` (optional), `subjectDescriptor` (a Group's `vssgp.…`), `permissions {<Action>: Allow\|Deny\|NotSet}` (21 actions, default `NotSet`) | — |
 | `FeedPermission` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `feedId`, `subjectDescriptor` (a Group's `vssgp.…`), `role` (reader, collaborator, contributor, administrator) | — |
+| `ServiceEndpointUsernamePassword` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `type`, `url`, `isShared`, `data`, `serviceEndpointProjectReferences[] {name, description, projectReference.id}`, `authorization {scheme: UsernamePassword, parameters {username, passwordSecretRef {name, key}, registry, email}}` | `id`, `name`, `isReady` |
+| `ServiceEndpointToken` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `type`, `url`, `isShared`, `data`, `serviceEndpointProjectReferences[] {name, description, projectReference.id}`, `authorization {scheme: Token, parameters {apitokenSecretRef {name, key}, email}}` | `id`, `name`, `isReady` |
+| `ServiceEndpointGitHubToken` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `type`, `url`, `isShared`, `data`, `serviceEndpointProjectReferences[] {name, description, projectReference.id}` (`type: github`), `authorization {scheme: Token, parameters {AccessTokenSecretRef {name, key}}}` | `id`, `name`, `isReady` |
+| `ServiceEndpointServicePrincipal` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `type`, `url`, `isShared`, `data`, `serviceEndpointProjectReferences[] {name, description, projectReference.id}`, `authorization {scheme: ServicePrincipal, parameters {tenantid, serviceprincipalid, authenticationType: spnKey, serviceprincipalkeySecretRef {name, key}}}` | `id`, `name`, `isReady` |
 
 Every kind also has `spec.configurationRef` (`{name, namespace}`) and the standard conditions.
 `status` fields are append-only once generated.

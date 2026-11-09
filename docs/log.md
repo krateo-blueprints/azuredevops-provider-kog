@@ -11,6 +11,29 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-09 — oasgen-provider 0.56.0 and Phase 2c
+
+- Pin moved from 0.55.0 to 0.56.0. The cluster upgraded in place (CRDs chart first, then the
+  provider); `status.secretRefDigest` read back on every RestDefinition, so no new field was pruned.
+  The render check gives the same 53 warnings on 0.55.0 and 0.56.0 across all 25 kinds.
+- Full regression of the 21 previously shipped kinds on 0.56.0: 123 checks across 10 live suites, no
+  failures.
+- Four service-connection kinds, one per authorization scheme, live-verified on 0.56.0:
+  `ServiceEndpointUsernamePassword`, `ServiceEndpointToken`, `ServiceEndpointGitHubToken` and
+  `ServiceEndpointServicePrincipal`. The secret comes from a Kubernetes Secret through a `secretRef`
+  resolver; 0.56.0 grants the controller read access to exactly the Secrets the CRs name
+  (oasgen-provider#510, #527). Covered: create, no drift across a poll, update, delete, two CRs with two
+  Secrets, a connection shared with two projects (deleted from both), and the grant revoked after
+  the last CR goes (48 to 181 s, healthy CRs).
+- Measured and recorded: schemes and parameter names come from `GET _apis/serviceendpoint/types`
+  (there is no PersonalAccessToken scheme: a GitHub token is scheme `Token` with `AccessToken`; `npm`
+  does not take `Token`). A `secretRef` mapping must name its source in `inCustomResource`, or the
+  reference object is sent and Azure DevOps answers 400 (oasgen-provider#537). Dropping the redacted
+  `null` secret from the response emptied `parameters` and read as drift, so no transform drops it.
+- Not yet: adopting an existing connection finds it but never converges, because the update
+  demands a per-resource Role that only a create makes (oasgen-provider#540, removal decided
+  upstream; present since at least 0.52.0).
+
 ## 2026-11-09 — Phase 3
 
 - Four more native kinds, live-verified on oasgen-provider 0.55.0: `Group` and `GroupMembership`
