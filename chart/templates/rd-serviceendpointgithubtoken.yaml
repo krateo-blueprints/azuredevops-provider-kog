@@ -1,14 +1,14 @@
-{{- if include "azuredevops-provider-kog.kindEnabled" (list . "ServiceEndpointPersonalAccessToken") -}}
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "ServiceEndpointGitHubToken") -}}
 apiVersion: ogen.krateo.io/v1alpha1
 kind: RestDefinition
 metadata:
-  name: {{ .Release.Name }}-serviceendpointpersonalaccesstoken
+  name: {{ .Release.Name }}-serviceendpointgithubtoken
   namespace: {{ .Release.Namespace }}
 spec:
-  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-serviceendpointpersonalaccesstoken/serviceendpointpersonalaccesstoken.yaml
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-serviceendpointgithubtoken/serviceendpointgithubtoken.yaml
   resourceGroup: {{ .Values.resourceGroup }}
   resource:
-    kind: ServiceEndpointPersonalAccessToken
+    kind: ServiceEndpointGitHubToken
     # A connection name is unique within a project and known before creation.
     identifiers:
       - name
@@ -16,11 +16,11 @@ spec:
     additionalStatusFields:
       - id
       - isReady
-    # `accessToken` is written by the secretRef resolver from accessTokenSecretRef; excluding it from the
+    # `AccessToken` is written by the secretRef resolver from AccessTokenSecretRef; excluding it from the
     # spec means a cleartext secret cannot be put in a CR at all. `operation` (PUT) and `deep`
     # (DELETE) are request options, not desired state. (Immutable list.)
     excludedSpecFields:
-      - authorization.parameters.accessToken
+      - authorization.parameters.AccessToken
       - operation
       - deep
       - actionFilter
@@ -45,13 +45,17 @@ spec:
         method: POST
         path: /{organization}/_apis/serviceendpoint/endpoints
         fieldMapping:
+          # inCustomResource names the resolver's CR-side source, which rest-dynamic-controller drops
+          # from the body: without it the AccessTokenSecretRef object is sent too, and Azure DevOps cannot
+          # read a non-string parameter (400 "Value cannot be null. Parameter name: endpoint", measured).
           - &secret
-            inBody: authorization.parameters.accessToken
+            inBody: authorization.parameters.AccessToken
+            inCustomResource: spec.authorization.parameters.AccessTokenSecretRef
             resolver:
               type: secretRef
               secretRef:
-                nameFromCustomResource: spec.authorization.parameters.accessTokenSecretRef.name
-                keyFromCustomResource: spec.authorization.parameters.accessTokenSecretRef.key
+                nameFromCustomResource: spec.authorization.parameters.AccessTokenSecretRef.name
+                keyFromCustomResource: spec.authorization.parameters.AccessTokenSecretRef.key
         responseTransform: *dropRedacted
       - action: get
         method: GET

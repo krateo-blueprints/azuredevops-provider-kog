@@ -1,11 +1,11 @@
-# ServiceEndpointPersonalAccessToken: a service connection authenticated with a personal access token (scheme PersonalAccessToken: GitHub).
-# The personal access token comes from a Kubernetes Secret, never from the CR.
+# ServiceEndpointGitHubToken: a GitHub service connection authenticated with a personal access token (type github, scheme Token).
+# The GitHub personal access token comes from a Kubernetes Secret, never from the CR.
 source:
   area: serviceEndpoint
   file: serviceEndpoint.json
   swhid: swh:1:cnt:c25115e4c21b18aa7c2720c7d3b30e88d852a75f
 info:
-  title: Azure DevOps - Service Connections (PersonalAccessToken)
+  title: Azure DevOps - Service Connections (GitHubToken)
 keep:
   '/{organization}/_apis/serviceendpoint/endpoints': [post]
   '/{organization}/{project}/_apis/serviceendpoint/endpoints': [get]
@@ -15,14 +15,14 @@ keep:
 operationSecurity: accessToken
 patches:
   - op: set
-    at: [definitions, ServiceEndpointPersonalAccessToken]
+    at: [definitions, ServiceEndpointGitHubToken]
     value:
-      description: The request fields of a PersonalAccessToken service connection.
+      description: The request fields of a GitHubToken service connection.
       type: object
       required: [name, type, url, authorization, serviceEndpointProjectReferences]
       properties:
         name: {type: string}
-        type: {type: string, description: 'Connection type, e.g. github.'}
+        type: {type: string, enum: [github], description: 'Always github.'}
         url: {type: string}
         isShared: {type: boolean}
         data:
@@ -33,18 +33,18 @@ patches:
           type: object
           required: [scheme, parameters]
           properties:
-            scheme: {type: string, enum: [PersonalAccessToken]}
+            scheme: {type: string, enum: [Token]}
             parameters:
               type: object
-              required: [accessTokenSecretRef]
+              required: [AccessTokenSecretRef]
               properties:
-                accessToken:
+                AccessToken:
                   type: string
-                  description: Set by rest-dynamic-controller from accessTokenSecretRef. Excluded from the CR spec.
-                accessTokenSecretRef:
+                  description: Set by rest-dynamic-controller from AccessTokenSecretRef. Excluded from the CR spec.
+                AccessTokenSecretRef:
                   type: object
                   description: >-
-                    NOT a vendor field. The Kubernetes Secret (same namespace) and key holding the personal access token.
+                    NOT a vendor field. The Kubernetes Secret (same namespace) and key holding the GitHub personal access token.
                     Consumed by rest-dynamic-controller's secretRef resolver and never transmitted.
                   required: [name, key]
                   properties:
@@ -66,30 +66,30 @@ patches:
     reason: >-
       The source types the body as the full ServiceEndpoint, with `authorization.parameters` as an
       untyped string map and server-managed fields (id, isReady, createdBy, operationStatus, groups).
-      This kind fixes the scheme to PersonalAccessToken and names its parameters (from the Azure DevOps service
-      connection reference; NOT yet measured, part of the 0.56.0 live run). Measured 2026-11-07:
+      This kind fixes the scheme to Token and names its parameters (measured 2026-11-09
+      from the GET _apis/serviceendpoint/types catalog). Measured 2026-11-07:
       a project reference needs the project id (a name returns 400); the top-level `description` of a
       project-scoped connection mirrors its project reference's description (a top-level description
-      alone is not kept), so description lives on the reference. `accessTokenSecretRef` is NOT a vendor
+      alone is not kept), so description lives on the reference. `AccessTokenSecretRef` is NOT a vendor
       field: it is the CR-side source of rest-dynamic-controller's secretRef resolver, which writes
-      `accessToken` and strips `accessTokenSecretRef` before sending (builder.go stripResolverSources).
+      `AccessToken` and strips `AccessTokenSecretRef` before sending (builder.go stripResolverSources).
   - op: set
-    at: [definitions, ServiceEndpointPersonalAccessTokenUpdate]
+    at: [definitions, ServiceEndpointGitHubTokenUpdate]
     value:
       description: The update body is the connection plus the id it replaces.
       type: object
-      allOf: [{$ref: '#/definitions/ServiceEndpointPersonalAccessToken'}]
+      allOf: [{$ref: '#/definitions/ServiceEndpointGitHubToken'}]
       required: [id]
       properties:
         id: {type: string}
     reason: Measured 2026-11-07, PUT with the id in the body applies url and description changes and echoes them.
   - op: set
     at: [paths, '/{organization}/_apis/serviceendpoint/endpoints', post, parameters, 1, schema]
-    value: {$ref: '#/definitions/ServiceEndpointPersonalAccessToken'}
+    value: {$ref: '#/definitions/ServiceEndpointGitHubToken'}
     reason: Points the create body at the UsernamePassword request schema.
   - op: set
     at: [paths, '/{organization}/_apis/serviceendpoint/endpoints/{endpointId}', put, parameters, 1, schema]
-    value: {$ref: '#/definitions/ServiceEndpointPersonalAccessTokenUpdate'}
+    value: {$ref: '#/definitions/ServiceEndpointGitHubTokenUpdate'}
     reason: Points the update body at the UsernamePassword update schema.
   - op: set
     at: [paths, '/{organization}/{project}/_apis/serviceendpoint/endpoints', get, parameters]

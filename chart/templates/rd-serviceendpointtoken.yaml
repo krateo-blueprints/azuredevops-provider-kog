@@ -45,8 +45,12 @@ spec:
         method: POST
         path: /{organization}/_apis/serviceendpoint/endpoints
         fieldMapping:
+          # inCustomResource names the resolver's CR-side source, which rest-dynamic-controller drops
+          # from the body: without it the apitokenSecretRef object is sent too, and Azure DevOps cannot
+          # read a non-string parameter (400 "Value cannot be null. Parameter name: endpoint", measured).
           - &secret
             inBody: authorization.parameters.apitoken
+            inCustomResource: spec.authorization.parameters.apitokenSecretRef
             resolver:
               type: secretRef
               secretRef:

@@ -1,4 +1,4 @@
-# ServiceEndpointToken: a service connection authenticated with an API token (scheme Token: Azure Repos/TFS, npm, ...).
+# ServiceEndpointToken: a service connection authenticated with an API token (scheme Token: externaltfs, externalnpmregistry, artifacts-upstream, bitbucket, ...).
 # The API token comes from a Kubernetes Secret, never from the CR.
 source:
   area: serviceEndpoint
@@ -22,7 +22,7 @@ patches:
       required: [name, type, url, authorization, serviceEndpointProjectReferences]
       properties:
         name: {type: string}
-        type: {type: string, description: 'Connection type, e.g. externaltfs or npm.'}
+        type: {type: string, description: 'Connection type, e.g. externaltfs, externalnpmregistry or bitbucket (github has its own kind, ServiceEndpointGitHubToken).'}
         url: {type: string}
         isShared: {type: boolean}
         data:
@@ -38,6 +38,7 @@ patches:
               type: object
               required: [apitokenSecretRef]
               properties:
+                email: {type: string, description: Account email (required by bitbucket).}
                 apitoken:
                   type: string
                   description: Set by rest-dynamic-controller from apitokenSecretRef. Excluded from the CR spec.
@@ -66,8 +67,8 @@ patches:
     reason: >-
       The source types the body as the full ServiceEndpoint, with `authorization.parameters` as an
       untyped string map and server-managed fields (id, isReady, createdBy, operationStatus, groups).
-      This kind fixes the scheme to Token and names its parameters (from the Azure DevOps service
-      connection reference; NOT yet measured, part of the 0.56.0 live run). Measured 2026-11-07:
+      This kind fixes the scheme to Token and names its parameters (measured 2026-11-09
+      from the GET _apis/serviceendpoint/types catalog). Measured 2026-11-07:
       a project reference needs the project id (a name returns 400); the top-level `description` of a
       project-scoped connection mirrors its project reference's description (a top-level description
       alone is not kept), so description lives on the reference. `apitokenSecretRef` is NOT a vendor

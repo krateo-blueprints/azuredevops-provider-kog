@@ -50,7 +50,7 @@
           "Queue",
           "RepositoryPermission",
           "Run",
-          "ServiceEndpointPersonalAccessToken",
+          "ServiceEndpointGitHubToken",
           "ServiceEndpointServicePrincipal",
           "ServiceEndpointToken",
           "ServiceEndpointUsernamePassword",

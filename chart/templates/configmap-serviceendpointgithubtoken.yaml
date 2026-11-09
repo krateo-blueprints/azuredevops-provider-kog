@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "ServiceEndpointGitHubToken") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-serviceendpointgithubtoken
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/serviceendpointgithubtoken.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  serviceendpointgithubtoken.yaml: |
+{{ .Files.Get "assets/serviceendpointgithubtoken.yaml" | indent 4 }}
+{{- end }}

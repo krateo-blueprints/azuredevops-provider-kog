@@ -40,7 +40,7 @@ patches:
               properties:
                 tenantid: {type: string, description: Microsoft Entra tenant id.}
                 serviceprincipalid: {type: string, description: Application (client) id of the service principal.}
-                authenticationType: {type: string, enum: [spnKey], description: spnKey is a client secret. Certificate and workload identity federation authentication are not covered by this kind.}
+                authenticationType: {type: string, enum: [spnKey], description: spnKey is a client secret. Certificate (spnCertificate) and workload identity federation authentication are not covered by this kind.}
                 serviceprincipalkey:
                   type: string
                   description: Set by rest-dynamic-controller from serviceprincipalkeySecretRef. Excluded from the CR spec.
@@ -69,8 +69,8 @@ patches:
     reason: >-
       The source types the body as the full ServiceEndpoint, with `authorization.parameters` as an
       untyped string map and server-managed fields (id, isReady, createdBy, operationStatus, groups).
-      This kind fixes the scheme to ServicePrincipal and names its parameters (from the Azure DevOps service
-      connection reference; NOT yet measured, part of the 0.56.0 live run). Measured 2026-11-07:
+      This kind fixes the scheme to ServicePrincipal and names its parameters (measured 2026-11-09
+      from the GET _apis/serviceendpoint/types catalog). Measured 2026-11-07:
       a project reference needs the project id (a name returns 400); the top-level `description` of a
       project-scoped connection mirrors its project reference's description (a top-level description
       alone is not kept), so description lives on the reference. `serviceprincipalkeySecretRef` is NOT a vendor

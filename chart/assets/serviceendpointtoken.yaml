@@ -475,7 +475,8 @@ components:
           type: string
         type:
           type: string
-          description: Connection type, e.g. externaltfs or npm.
+          description: Connection type, e.g. externaltfs, externalnpmregistry or bitbucket (github has
+            its own kind, ServiceEndpointGitHubToken).
         url:
           type: string
         isShared:
@@ -500,6 +501,9 @@ components:
               required:
               - apitokenSecretRef
               properties:
+                email:
+                  type: string
+                  description: Account email (required by bitbucket).
                 apitoken:
                   type: string
                   description: Set by rest-dynamic-controller from apitokenSecretRef. Excluded from the

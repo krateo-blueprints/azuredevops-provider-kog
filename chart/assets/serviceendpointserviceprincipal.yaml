@@ -514,8 +514,8 @@ components:
                   type: string
                   enum:
                   - spnKey
-                  description: spnKey is a client secret. Certificate and workload identity federation
-                    authentication are not covered by this kind.
+                  description: spnKey is a client secret. Certificate (spnCertificate) and workload identity
+                    federation authentication are not covered by this kind.
                 serviceprincipalkey:
                   type: string
                   description: Set by rest-dynamic-controller from serviceprincipalkeySecretRef. Excluded
