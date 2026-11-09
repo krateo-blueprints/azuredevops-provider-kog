@@ -1,13 +1,14 @@
 # azuredevops-provider-kog — LLM doc index
 # A Krateo KOG provider (oasgen-provider 0.55.0) exposing Azure DevOps REST resources as
 # azuredevops.krateo.io Kubernetes kinds. The chart ships RestDefinitions + trimmed OpenAPI documents
-# only (no image, no plugin). Status: Phase 4 — GitRepository, GitPush, Pipeline, PipelinePermission,
+# only (no image, no plugin). Status: Phase 3 — GitRepository, GitPush, Pipeline, PipelinePermission,
 # TeamProject, Environment, Queue, CheckApproval, CheckExclusiveLock, CheckRequiredTemplate, CheckTask,
-# PullRequest, PolicyBuildValidation, PolicyRequiredReviewers, PolicyStatus, Feed, Run
+# PullRequest, PolicyBuildValidation, PolicyRequiredReviewers, PolicyStatus, Feed, Run, Group,
+# GroupMembership, RepositoryPermission, FeedPermission
 # native and live-verified. OAS documents are generated from Microsoft's spec archived in Software
 # Heritage and converted to OpenAPI 3.0.3 (rest-dynamic-controller 0.54.x loads OAS 3 only).
 docs/index.md: the map — what the provider is, the kinds by family and phase (Phase 1 done), layout
-docs/overview.md: how it works, design decisions, where the OAS documents come from (SWH), conventions, per-kind behaviour table, GitPush recovery, phase plan, upstream dependencies (#491 #499 #502 #503 #490 #323 #496-#498 #505-#510 #486 #514 #517-#519 #483 #521)
+docs/overview.md: how it works, design decisions, where the OAS documents come from (SWH), conventions, per-kind behaviour table, GitPush recovery, phase plan, upstream dependencies (#491 #499 #502 #503 #490 #323 #496-#498 #505-#510 #486 #514 #517-#519 #483 #521 #528 #529)
 docs/usage.md: install on oasgen-provider 0.55.0, the PAT Secret, migration from the classic provider (mutually exclusive) and the legacy KOG chart
 docs/configuration.md: chart values, the per-kind <Kind>Configuration, the config chart (values + per-kind verbs/api-version), CI-enforced RestDefinition invariants
 docs/api.md: the generated CRDs, version derivation, Phase 1 kinds' spec/status fields
@@ -21,7 +22,7 @@ chart/Chart.yaml: chart metadata; version is the CHART_VERSION placeholder
 chart/values.yaml: resourceGroup and kinds, with rationale
 chart/values.schema.json: the schema the CDC derives the component CRD from
 chart/templates/_helpers.tpl: kindEnabled helper (empty kinds = all)
-chart/templates/rd-<kind>.yaml + configmap-<kind>.yaml: one RestDefinition + OAS ConfigMap per kind (gitrepository, gitpush, pipeline, pipelinepermission, teamproject, environment, queue, checkapproval, checkexclusivelock, checkrequiredtemplate, checktask, pullrequest, policybuildvalidation, policyrequiredreviewers, policystatus, feed, run); each RD comments its identity, exclusions, compareScope and verb choices
+chart/templates/rd-<kind>.yaml + configmap-<kind>.yaml: one RestDefinition + OAS ConfigMap per kind (gitrepository, gitpush, pipeline, pipelinepermission, teamproject, environment, queue, checkapproval, checkexclusivelock, checkrequiredtemplate, checktask, pullrequest, policybuildvalidation, policyrequiredreviewers, policystatus, feed, run, group, groupmembership, repositorypermission, feedpermission); each RD comments its identity, exclusions, compareScope and verb choices
 chart/assets/<kind>.yaml: GENERATED OpenAPI 3.0.3 documents (header lists source SWHID and every departure)
 config-chart/: azuredevops-provider-kog-config — one <Kind>Configuration per kind from one PAT Secret, per-verb api-version table in templates/configurations.yaml
 hack/oas-recipes/<kind>.yaml: source SWHID, kept operations, patches each with a reason

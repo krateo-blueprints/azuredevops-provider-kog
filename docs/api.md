@@ -43,6 +43,10 @@ Write CRs against that version, not `v1alpha1`.
 | `PolicyStatus` | `azuredevops.krateo.io/v7-1` | as above, with `settings {statusName, statusGenre, invalidateOnSourceUpdate, authorId, defaultDisplayName, policyApplicability, filenamePatterns[], scope[]}` | `id`, `revision` |
 | `Feed` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `description`, `badgesEnabled`, `hideDeletedPackageVersions` | `id`, `url` |
 | `Run` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `pipelineId`, `resources.repositories.<name> {refName, version}`, `templateParameters`, `stagesToSkip[]` | `id`, `name`, `state`, `result`, `url`, `createdDate`, `finishedDate` |
+| `Group` | `azuredevops.krateo.io/v7-1` | `organization`, `scopeDescriptor`, `displayName`, `description` | `descriptor`, `principalName`, `originId`, `domain` |
+| `GroupMembership` | `azuredevops.krateo.io/v7-1` | `organization`, `subjectDescriptor`, `containerDescriptor` | `memberDescriptor`, `containerDescriptor` |
+| `RepositoryPermission` | `azuredevops.krateo.io/v7-1` | `organization`, `projectId`, `repositoryId` (optional), `subjectDescriptor` (a Group's `vssgp.…`), `permissions {<Action>: Allow\|Deny\|NotSet}` (21 actions, default `NotSet`) | — |
+| `FeedPermission` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `feedId`, `subjectDescriptor` (a Group's `vssgp.…`), `role` (reader, collaborator, contributor, administrator) | — |
 
 Every kind also has `spec.configurationRef` (`{name, namespace}`) and the standard conditions.
 `status` fields are append-only once generated.
