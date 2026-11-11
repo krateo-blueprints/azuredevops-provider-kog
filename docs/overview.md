@@ -144,5 +144,6 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#529 | A failed write reported as HTTP 200 with the failure in the body is treated as success: `User` is held. |
 | oasgen-provider#567 | Fixed in 0.57.0 (#570): a failed call's error-body snippet is redacted. 0.56.0 logs it unredacted at INFO ([usage](usage.md)). |
 | oasgen-provider#566 | Fixed in 0.57.0 (#570): `krateo.io/connector-verbose` response dumps are redacted. |
-| oasgen-provider#579, #588 | On 0.57.0: one status-update conflict per RestDefinition after an upgrade, and a controller restart whenever a kind's set of referenced Secrets changes. Harmless here; fixes planned for 0.59.0. |
+| oasgen-provider#579, #588 | On 0.57.0: one status-update conflict per RestDefinition after an upgrade, and a controller restart whenever a kind's set of referenced Secrets changes. Harmless here. |
+| oasgen-provider#599 | On 0.59.0 a generated controller is never restarted when its ConfigMap changes, so an `rdc.env` change never reaches it: this chart stays on 0.57.0 until the fix ships ([usage](usage.md)). |
 | oasgen-provider#528 | Request mappings whose CR path does not resolve are skipped silently; the permission kinds' jq refuses on a missing component instead of composing a wrong token. |

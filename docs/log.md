@@ -11,6 +11,16 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-11 — Not moving to oasgen-provider 0.59.0
+
+- The 0.57.0 entry below says #579 and #588 were planned for 0.59.0. 0.59.0 fixes #579, but its
+  #588 change never restarts a generated controller when its ConfigMap changes
+  (oasgen-provider#599), so an `rdc.env` change never reaches a running controller.
+- Measured on a disposable GKE cluster: adding and then removing `REST_CONTROLLER_DEBUG` changed all
+  25 controller ConfigMaps; the Deployment revision stayed at 1 and every pod was still the one
+  created at install. A change to the Secrets a kind references alone correctly caused no restart.
+- The pin stays at 0.57.0 until the release carrying #599 and #597 passes the same check.
+
 ## 2026-11-11 — GitPush and PullRequest take the repository GUID
 
 - `spec.repositoryId` on `GitPush` and `PullRequest` must be the repository's GUID; the CRD refuses

@@ -72,7 +72,14 @@ this chart's 25 kinds the generated CRDs are byte-identical). **Forward only:** 
 read, #545 removes the per-resource Secret Role). Two log patterns are expected and harmless on
 0.57.0: one `Reconciler error … cannot update managed resource status` per RestDefinition right
 after the upgrade (oasgen-provider#579), and a controller restart each time the set of Secrets a
-kind's CRs reference changes (oasgen-provider#588); both are fixed upstream for 0.59.0.
+kind's CRs reference changes (oasgen-provider#588).
+
+**Stay on 0.57.0; do not move to 0.59.0.** 0.59.0 fixes #579, but in place of #588's extra
+restarts it never restarts a generated controller when its ConfigMap changes (oasgen-provider#599:
+the provider reads the live ConfigMap under the wrong name). An `rdc.env` change on the provider
+chart then never reaches a running controller, with no error. Measured 2026-11-11 on GKE: all 25
+ConfigMaps changed, no rollout, every pod still the one created at install. The fix (#599 with
+#597) is due in the next oasgen-provider release; this chart moves its pin once that is verified.
 
 ## Migrating from the classic provider
 
