@@ -145,8 +145,9 @@ jobs:
           for name in $CHARTS; do
             meta="$(helm show chart "charts-dist/${name}-${VERSION}.tgz")"
             n="$(sed -n 's/^name: //p' <<< "$meta")"; v="$(sed -n 's/^version: //p' <<< "$meta")"
-            if [ "$n" != "$name" ] || [ "$v" != "$VERSION" ]; then
-              echo "::error::${name}-${VERSION}.tgz declares name '${n}' version '${v}'"
+            a="$(sed -n 's/^appVersion: //p' <<< "$meta" | tr -d '"')"
+            if [ "$n" != "$name" ] || [ "$v" != "$VERSION" ] || [ "$a" != "$VERSION" ]; then
+              echo "::error::${name}-${VERSION}.tgz declares name '${n}' version '${v}' appVersion '${a}'"
               exit 1
             fi
             echo "${name} ${VERSION} ok"

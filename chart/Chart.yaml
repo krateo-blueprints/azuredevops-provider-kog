@@ -8,11 +8,11 @@ description: >-
   and no proxy plugin.
 type: application
 
-# release-oci substitutes CHART_VERSION from the pushed semver tag.
+# release-oci substitutes every CHART_VERSION from the pushed semver tag, so version and
+# appVersion are always the release version. No provider image is shipped (oasgen-provider spawns
+# one rest-dynamic-controller per kind), so there is no separate app version to report.
 version: CHART_VERSION
-# No provider image is shipped; oasgen-provider spawns one rest-dynamic-controller per kind.
-# appVersion tracks the OpenAPI/mapping revision.
-appVersion: "0.0.1"
+appVersion: "CHART_VERSION"
 
 keywords:
   - krateo
