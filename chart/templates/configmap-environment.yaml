@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Environment") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-environment
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/environment.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  environment.yaml: |
+{{ .Files.Get "assets/environment.yaml" | indent 4 }}
+{{- end }}

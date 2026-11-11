@@ -22,7 +22,7 @@ The chart defines no CRDs of its own. For each kind, oasgen-provider 0.55.0 gene
 `kubectl get restdefinition <name> -o wide` prints the served version in the `API VERSION` column.
 Write CRs against that version, not `v1alpha1`.
 
-## Phase 1 kinds
+## Kinds
 
 | Kind | apiVersion | spec | status |
 |---|---|---|---|
@@ -30,6 +30,13 @@ Write CRs against that version, not `v1alpha1`.
 | `GitPush` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (name or id), `refUpdates[]` `{name, oldObjectId}`, `commits[]` `{comment, changes[] {changeType, item.path, newContent {content, contentType}}}` | `pushId`, `date`, `url` |
 | `Pipeline` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `path`, `process {type: 2, yamlFilename}`, `repository {id, type, defaultBranch}` | `id`, `name`, `path`, `revision`, `url`, `queueStatus` |
 | `PipelinePermission` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `resourceType`, `resourceId`, `allPipelines {authorized}`, `pipelines[] {id, authorized}` | `resource` |
+| `TeamProject` | `azuredevops.krateo.io/v7-1` | `organization`, `name`, `description`, `visibility`, `capabilities {versioncontrol.sourceControlType, processTemplate.templateTypeId}` | `id`, `name`, `state`, `revision`, `url`, `visibility` |
+| `Environment` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `description` | `id`, `name`, `createdOn`, `lastModifiedOn` |
+| `Queue` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `pool {id, name}`, `authorizePipelines` | `id`, `name`, `projectId`, `pool.id` |
+| `CheckApproval` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `type` (defaulted), `resource {type, id}`, `timeout`, `settings {approvers[].id, minRequiredApprovers, instructions, executionOrder, requesterCannotBeApprover, blockedApprovers[].id}` | `id`, `version`, `type`, `resource` |
+| `CheckExclusiveLock` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `type` (defaulted), `resource {type, id}`, `timeout` | `id`, `version`, `type`, `resource` |
+| `CheckRequiredTemplate` | `azuredevops.krateo.io/v7-1-preview` | as above, plus `settings.extendsChecks[] {repositoryType, repositoryName, repositoryRef, templatePath}` | `id`, `version`, `type`, `resource` |
+| `CheckTask` | `azuredevops.krateo.io/v7-1-preview` | as above, plus `settings {definitionRef {id, name, version}, displayName, inputs, retryInterval, linkedVariableGroup}` | `id`, `version` |
 
 Every kind also has `spec.configurationRef` (`{name, namespace}`) and the standard conditions.
 `status` fields are append-only once generated.

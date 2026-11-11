@@ -1,0 +1,80 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Queue") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-queue
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-queue/queue.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: Queue
+    # A queue name is unique within a project and known before creation.
+    identifiers:
+      - name
+    # Append-only once generated. id addresses get/delete.
+    additionalStatusFields:
+      - id
+      - projectId
+      - pool.id
+    # Read options of the list and get operations. (Immutable list.) `authorizePipelines` is a
+    # create-time input (authorize every pipeline to use the queue) and stays a spec field.
+    excludedSpecFields:
+      - actionFilter
+    # A queue has no update operation: every spec field is create-only, so compare only identity.
+    compareScope: identifiersAndStatus
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    # spec.pool.name -> pool id: one read of the organization's pools filtered by name, then exactly one
+    # match by name (an ambiguous or absent match never picks a pool). Skipped when spec.pool.id is given.
+    #
+    # BLOCKED UPSTREAM (oasgen-provider#508): a lookup cannot send the api-version every Azure DevOps
+    # endpoint requires, so on 0.54.x this lookup fails ("missing query parameter: api-version").
+    # Until it lands, CRs set spec.pool.id (the lookup is then skipped). The declaration is kept as is,
+    # so pool names start working without a CRD change once lookups can carry static queries.
+    dependentLookups:
+      - name: poolId
+        method: GET
+        path: /{organization}/_apis/distributedtask/pools
+        parameters:
+          - inPath: organization
+            inCustomResource: spec.organization
+          - inQuery: poolName
+            inCustomResource: spec.pool.name
+        match:
+          itemsAt: .value
+          whereField: name
+          equalsFromCustomResource: spec.pool.name
+          selectField: id
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/distributedtask/queues
+        itemsPath: value
+        # The list filters by name server-side; bound so `queueName` is not a spec field.
+        fieldMapping:
+          - inQuery: queueName
+            inCustomResource: spec.name
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/distributedtask/queues
+        fieldMapping:
+          - inBody: pool.id
+            resolver:
+              type: dependentLookup
+              dependentLookup:
+                name: poolId
+                when: {customResourceFieldAbsent: spec.pool.id}
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/distributedtask/queues/{queueId}
+        fieldMapping: &queueId
+          - inPath: queueId
+            inCustomResource: status.id
+      # Deleting a queue removes the pool's availability from this project; the pool is untouched.
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/distributedtask/queues/{queueId}
+        fieldMapping: *queueId
+{{- end }}

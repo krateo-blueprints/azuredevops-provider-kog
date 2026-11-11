@@ -3,3 +3,5 @@
 # Every entry states why it is desired state.
 GitRepository:
   sourceRef: "Create-time input for a fork: which source refs to copy into the new repository."
+Queue:
+  authorizePipelines: "Create-time input: authorize every pipeline in the project to use the new queue."

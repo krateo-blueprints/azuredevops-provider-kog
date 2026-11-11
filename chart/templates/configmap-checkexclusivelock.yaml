@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "CheckExclusiveLock") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-checkexclusivelock
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/checkexclusivelock.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  checkexclusivelock.yaml: |
+{{ .Files.Get "assets/checkexclusivelock.yaml" | indent 4 }}
+{{- end }}

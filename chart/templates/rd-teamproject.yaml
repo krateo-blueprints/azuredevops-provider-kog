@@ -1,0 +1,95 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "TeamProject") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-teamproject
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-teamproject/teamproject.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: TeamProject
+    # A project name is unique within an organization and known before creation.
+    identifiers:
+      - name
+    # Append-only once generated. id addresses get/update/delete.
+    additionalStatusFields:
+      - id
+      - state
+      - revision
+      - url
+      - visibility
+    # Read options of the list and get operations, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - stateFilter
+      - $top
+      - $skip
+      - continuationToken
+      - getDefaultTeamImageUrl
+      - includeCapabilities
+      - includeHistory
+    # Compare what an update can change: name, description, visibility. Capabilities are create-only.
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /{organization}/_apis/projects
+        itemsPath: value
+        pagination:
+          type: continuationToken
+          continuationToken:
+            request: {tokenIn: query, tokenPath: continuationToken}
+            response: {tokenIn: header, tokenPath: x-ms-continuationtoken}
+      # Create, update and delete answer 202 with an OPERATION reference {id, status, url}: its id is
+      # the operation's, not the project's. The handle is read from the raw response (async runs
+      # first); the responseTransform then renames the operation's fields, so the project's status.id
+      # is never set to an operation id. No postGet: postGet projects the trigger response into
+      # status before re-reading, which would key the re-read by the operation id. The next observe
+      # finds the project by name and records its real id.
+      - action: create
+        method: POST
+        path: /{organization}/_apis/projects
+        # mode: requeue records the operation handle on the CR and polls it on later observes. In
+        # blocking mode a controller restart mid-poll re-runs the create, which Azure DevOps refuses
+        # ("TF200019: project already exists") until the next resync adopts the project. Measured.
+        # Paths are plain dot notation (ParsePath): `id`, not `.id`.
+        async: &asyncRequeue
+          operationRef: {in: body, path: id}
+          poll: &poll
+            method: GET
+            path: /{organization}/_apis/operations/{operationId}
+            statusPath: status
+            successValues: [succeeded]
+            failureValues: [failed, cancelled]
+            intervalSeconds: 2
+            maxAttempts: 90
+          mode: requeue
+        responseTransform: &operationNotProject
+          inline: '{operationId: .id, operationStatus: .status}'
+      - action: get
+        method: GET
+        path: /{organization}/_apis/projects/{projectId}
+        fieldMapping: &projectId
+          - inPath: projectId
+            inCustomResource: status.id
+      - action: update
+        method: PATCH
+        path: /{organization}/_apis/projects/{projectId}
+        fieldMapping: *projectId
+        async: *asyncRequeue
+        responseTransform: *operationNotProject
+      # Delete is Azure DevOps's soft delete: the project moves to the organization's recycle bin
+      # (restorable), and its name is reusable immediately (both measured). A get then answers 404.
+      - action: delete
+        method: DELETE
+        path: /{organization}/_apis/projects/{projectId}
+        fieldMapping: *projectId
+        # Delete always polls inline, under its finalizer (requeue is create/update only).
+        async:
+          operationRef: {in: body, path: id}
+          poll: *poll
+          mode: blocking
+{{- end }}

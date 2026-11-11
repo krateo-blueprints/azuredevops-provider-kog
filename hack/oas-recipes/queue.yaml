@@ -1,0 +1,81 @@
+# Queue: an agent queue, which makes an organization agent pool available to a project's pipelines.
+source:
+  area: distributedTask
+  file: taskAgent.json
+  swhid: swh:1:cnt:64b9fcd7116c5bb3e60a98020a0482fc83879d5a
+info:
+  title: Azure DevOps - Agent Queues
+keep:
+  '/{organization}/{project}/_apis/distributedtask/queues': [get, post]
+  '/{organization}/{project}/_apis/distributedtask/queues/{queueId}': [get, delete]
+  # The pool list is the dependentLookup that resolves spec.pool.name to the pool id.
+  '/{organization}/_apis/distributedtask/pools': [get]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, TaskAgentQueueCreate]
+    value:
+      description: The request fields of a queue create.
+      type: object
+      required: [name, pool]
+      properties:
+        name: {type: string}
+        pool:
+          type: object
+          description: 'The organization agent pool. Give `name` (resolved to its id) or `id`.'
+          properties:
+            id: {type: integer, format: int32}
+            name: {type: string}
+    reason: >-
+      The source types the create body as TaskAgentQueue, whose id and projectId are
+      server-assigned and whose pool carries server fields (size, poolType, isHosted, options).
+      A create takes a name and a pool reference (Microsoft Learn, Queues - Add Agent Queue, 7.1).
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/distributedtask/queues', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/TaskAgentQueueCreate'}
+    reason: Points the create body at TaskAgentQueueCreate.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/distributedtask/queues', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/TaskAgentQueue'}}
+    reason: Measured 2026-11-07, the queue list returns a {count, value} envelope, not a bare array.
+  - op: set
+    at: [paths, '/{organization}/_apis/distributedtask/pools', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/TaskAgentPool'}}
+    reason: Measured 2026-11-07, the pool list returns a {count, value} envelope; the lookup matches inside `value`.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/distributedtask/queues/{queueId}', delete, responses]
+    value: {'204': {description: The queue was deleted.}}
+    reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/distributedtask/queues', get, parameters]
+    value:
+      - {in: path, name: organization, description: The name of the Azure DevOps organization., required: true, type: string}
+      - {in: path, name: project, description: Project ID or project name, required: true, type: string}
+      - {in: query, name: queueName, description: Filter by queue name., required: false, type: string}
+      - {in: query, name: actionFilter, description: Filter by whether the calling user has use or manage permissions, required: false, type: string, enum: [none, manage, use]}
+      - {$ref: '#/parameters/api-Version'}
+    reason: >-
+      The source keeps only the "Get Agent Queues For Pools" overload of this path, whose poolIds
+      is required. The plain "Get Agent Queues" overload (Microsoft Learn, Queues - Get Agent
+      Queues, 7.1) has no poolIds and an optional queueName filter. Measured 2026-11-07: the list
+      without poolIds returns every queue of the project, and ?queueName= filters by name.
+  - op: set
+    at: [paths, '/{organization}/_apis/distributedtask/pools', get, parameters]
+    value:
+      - {in: path, name: organization, description: The name of the Azure DevOps organization., required: true, type: string}
+      - {in: query, name: poolName, description: Filter by name., required: false, type: string}
+      - {in: query, name: actionFilter, description: Filter by whether the calling user has use or manage permissions, required: false, type: string, enum: [none, manage, use]}
+      - {$ref: '#/parameters/api-Version'}
+    reason: >-
+      The source keeps only the "Get Agent Pools By Ids" overload, whose poolIds is required. The
+      plain "Get Agent Pools" overload (Microsoft Learn, Pools - Get Agent Pools, 7.1) filters by
+      an optional poolName. Measured 2026-11-07: ?poolName= returns exactly the named pool.

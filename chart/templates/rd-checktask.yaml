@@ -1,0 +1,52 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "CheckTask") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-checktask
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-checktask/checktask.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: CheckTask
+    # NO identifiers and NO findby, by decision: Azure DevOps allows any number of task checks per
+    # resource, even with the same definition and displayName (measured), so nothing in the spec
+    # identifies one. The CR observes only by the server id in status: it never adopts a check made
+    # elsewhere, and a lost create response needs manual recovery (oasgen-provider#503).
+    # Append-only once generated. id addresses get/update/delete; version increments per update.
+    additionalStatusFields:
+      - id
+      - version
+    # $expand is sent as a fixed query below, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - $expand
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations
+      # A plain get omits `settings` (measured); without $expand=settings drift would never see them.
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+        fieldMapping: &checkId
+          - inPath: id
+            inCustomResource: status.id
+        queries:
+          - {name: $expand, value: settings}
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+        fieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+          - inBody: id
+            inCustomResource: status.id
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+        fieldMapping: *checkId
+{{- end }}

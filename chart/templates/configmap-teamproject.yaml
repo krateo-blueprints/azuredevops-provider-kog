@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "TeamProject") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-teamproject
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/teamproject.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  teamproject.yaml: |
+{{ .Files.Get "assets/teamproject.yaml" | indent 4 }}
+{{- end }}

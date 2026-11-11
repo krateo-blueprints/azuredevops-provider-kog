@@ -1,0 +1,187 @@
+# CheckRequiredTemplate: the Required template check (ExtendsCheck) on a protected resource: runs
+# must extend one of the listed YAML templates. At most one per resource.
+source:
+  area: approvalsAndChecks
+  file: pipelinesChecks.json
+  swhid: swh:1:cnt:e5411050114d59c98d541017e29482d4789a0ac7
+info:
+  title: Azure DevOps - Required template checks
+keep:
+  /{organization}/{project}/_apis/pipelines/checks/configurations:
+  - get
+  - post
+  /{organization}/{project}/_apis/pipelines/checks/configurations/{id}:
+  - get
+  - patch
+  - delete
+operationSecurity: accessToken
+patches:
+- op: set
+  at:
+  - definitions
+  - CheckRequiredTemplate
+  value:
+    description: The request fields of a ExtendsCheck check.
+    type: object
+    required:
+    - type
+    - resource
+    - settings
+    properties:
+      type:
+        type: object
+        description: Always the ExtendsCheck check type (defaulted).
+        default:
+          id: 4020e66e-b0f3-47e1-bc88-48f3cc59b5f3
+          name: ExtendsCheck
+        required:
+        - id
+        properties:
+          id:
+            type: string
+            enum:
+            - 4020e66e-b0f3-47e1-bc88-48f3cc59b5f3
+          name:
+            type: string
+            enum:
+            - ExtendsCheck
+      resource:
+        type: object
+        required:
+        - type
+        - id
+        properties:
+          type:
+            type: string
+            description: e.g. environment, queue, endpoint, repository, variablegroup, securefile.
+          id:
+            type: string
+            description: Id of the protected resource.
+      timeout:
+        type: integer
+        format: int32
+        description: Minutes before the approval times out.
+      settings:
+        type: object
+        required:
+        - extendsChecks
+        properties:
+          extendsChecks:
+            type: array
+            items:
+              type: object
+              required:
+              - repositoryType
+              - repositoryName
+              - repositoryRef
+              - templatePath
+              properties:
+                repositoryType:
+                  type: string
+                  description: e.g. git (Azure Repos) or github.
+                repositoryName:
+                  type: string
+                  description: project/repository for Azure Repos.
+                repositoryRef:
+                  type: string
+                  description: e.g. refs/heads/main.
+                templatePath:
+                  type: string
+  reason: The source's CheckConfiguration has no `settings` property, while a check is defined by its
+    type-specific settings (Microsoft Learn, Check Configurations - Add, 7.1). This kind fixes the type
+    to ExtendsCheck (defaulted) and types its settings (`extendsChecks`, echoed exactly as sent, measured
+    2026-11-07). A second Required template check on the same resource is refused with 400 ("Required
+    template check already exists"). The type id comes back lowercased, so the default is lowercase.
+- op: set
+  at:
+  - definitions
+  - CheckRequiredTemplateUpdate
+  value:
+    description: The update body is the check plus the id it replaces.
+    type: object
+    allOf:
+    - $ref: '#/definitions/CheckRequiredTemplate'
+    required:
+    - id
+    properties:
+      id:
+        type: integer
+        format: int32
+  reason: Measured 2026-11-07, PATCH needs the full check including id and type (a partial body returns
+    400).
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations
+  - post
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/CheckRequiredTemplate'
+  reason: Points the create body at CheckRequiredTemplate.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+  - patch
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/CheckRequiredTemplateUpdate'
+  reason: Points the update body at CheckRequiredTemplateUpdate.
+- op: set
+  at:
+  - definitions
+  - CheckConfiguration
+  - properties
+  - settings
+  value:
+    type: object
+    description: Type-specific settings (returned when requested with $expand=settings).
+    additionalProperties: true
+  reason: The source omits `settings` from the response schema too; the API returns it on create and on
+    get with $expand=settings (measured 2026-11-07). Declared so responses are described truthfully.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations
+  - get
+  - responses
+  - '200'
+  - schema
+  value:
+    type: object
+    properties:
+      count:
+        type: integer
+        format: int32
+      value:
+        type: array
+        items:
+          $ref: '#/definitions/CheckConfiguration'
+  reason: Measured 2026-11-07, the list returns a {count, value} envelope.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+  - delete
+  - responses
+  value:
+    '204':
+      description: The check was deleted.
+  reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.
+- op: set
+  at:
+  - definitions
+  - CheckConfiguration
+  - properties
+  - version
+  value:
+    type: integer
+    format: int32
+    description: Increments on every update.
+  reason: 'Returned by the API on create, get and update (measured 2026-11-07: 1, then 2 after a PATCH)
+    but absent from the source''s schema. Without it the status field would be typed string and the API
+    server would reject the integer the controller writes.'

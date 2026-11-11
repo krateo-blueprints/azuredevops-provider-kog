@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "CheckApproval") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-checkapproval
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/checkapproval.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  checkapproval.yaml: |
+{{ .Files.Get "assets/checkapproval.yaml" | indent 4 }}
+{{- end }}

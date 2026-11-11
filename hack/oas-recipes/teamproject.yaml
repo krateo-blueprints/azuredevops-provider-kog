@@ -1,0 +1,93 @@
+# TeamProject: an Azure DevOps project. Create, update and delete are long-running operations:
+# each returns 202 with an operation reference that is polled to completion.
+source:
+  area: core
+  file: core.json
+  swhid: swh:1:cnt:c677f5d4d1a440bd24df994178ab929caf4a9ebd
+include:
+  # The async poll endpoint must be a path of the same document (oasgen-provider requirement).
+  - area: operations
+    file: operations.json
+    swhid: swh:1:cnt:e1b95ea9c6db637a093fae2e2047437c964ae10d
+    keep:
+      '/{organization}/_apis/operations/{operationId}': [get]
+info:
+  title: Azure DevOps - Projects
+keep:
+  '/{organization}/_apis/projects': [get, post]
+  '/{organization}/_apis/projects/{projectId}': [get, patch, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, TeamProjectCreate]
+    value:
+      description: The request fields of a project create.
+      type: object
+      required: [name, capabilities]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        visibility: {type: string, enum: [private, public]}
+        capabilities:
+          type: object
+          required: [versioncontrol, processTemplate]
+          properties:
+            versioncontrol:
+              type: object
+              required: [sourceControlType]
+              properties:
+                sourceControlType: {type: string, enum: [Git, Tfvc]}
+            processTemplate:
+              type: object
+              required: [templateTypeId]
+              properties:
+                templateTypeId: {type: string, description: 'Process id, e.g. the default process from GET _apis/process/processes.'}
+    reason: >-
+      The source types the create body as the whole TeamProject (id, state, revision, url,
+      defaultTeam, lastUpdateTime...) with `capabilities` as an untyped map of maps. This names the
+      fields a create takes (Microsoft Learn, Projects - Create, 7.1), with the two required
+      capabilities spelled out, so the CRD spec is the project's real inputs.
+  - op: set
+    at: [definitions, TeamProjectUpdate]
+    value:
+      description: The fields a project update accepts.
+      type: object
+      properties:
+        name: {type: string}
+        description: {type: string}
+        visibility: {type: string, enum: [private, public]}
+    reason: >-
+      Capabilities (version control, process) are fixed at creation; an update changes name,
+      description or visibility (Microsoft Learn, Projects - Update, 7.1). `compareScope:
+      updatable` derives the compared fields from this body.
+  - op: set
+    at: [paths, '/{organization}/_apis/projects', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/TeamProjectCreate'}
+    reason: Points the create body at TeamProjectCreate.
+  - op: set
+    at: [paths, '/{organization}/_apis/projects/{projectId}', patch, parameters, 1, schema]
+    value: {$ref: '#/definitions/TeamProjectUpdate'}
+    reason: Points the update body at TeamProjectUpdate.
+  - op: set
+    at: [paths, '/{organization}/_apis/projects', post, responses]
+    value: {'202': {description: The create operation was queued., schema: {$ref: '#/definitions/OperationReference'}}}
+    reason: Measured 2026-11-07, create returns 202 with an operation reference; the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/_apis/projects/{projectId}', patch, responses]
+    value: {'202': {description: The update operation was queued., schema: {$ref: '#/definitions/OperationReference'}}}
+    reason: Measured 2026-11-07, update returns 202 with an operation reference; the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/_apis/projects/{projectId}', delete, responses]
+    value: {'202': {description: The delete operation was queued., schema: {$ref: '#/definitions/OperationReference'}}}
+    reason: Measured 2026-11-07, delete returns 202 with an operation reference; the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/_apis/projects', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/TeamProjectReference'}}
+    reason: >-
+      Collection responses are {count, value: [...]} envelopes (measured); the findby verb's
+      `itemsPath: value` also locates the item schema.

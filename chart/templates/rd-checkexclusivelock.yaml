@@ -1,0 +1,67 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "CheckExclusiveLock") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-checkexclusivelock
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-checkexclusivelock/checkexclusivelock.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: CheckExclusiveLock
+    # Azure DevOps allows ONE Exclusive lock check per protected resource (a second is refused, measured),
+    # so check type + resource type + resource id is a true identity. Several identifiers, so AND
+    # explicitly (oasgen-provider#444).
+    identifiers:
+      - type.id
+      - resource.type
+      - resource.id
+    # Append-only once generated. id addresses get/update/delete; version increments per update.
+    additionalStatusFields:
+      - id
+      - version
+    # $expand is sent as a fixed query below, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - $expand
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      # The list filters by protected resource server-side; both filters are bound from the spec.
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations
+        itemsPath: value
+        identifiersMatchPolicy: AND
+        fieldMapping:
+          - inQuery: resourceType
+            inCustomResource: spec.resource.type
+          - inQuery: resourceId
+            inCustomResource: spec.resource.id
+        queries: &expandSettings
+          - {name: $expand, value: settings}
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations
+      # This check has no settings; $expand=settings is kept so every check kind reads the same shape.
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+        fieldMapping: &checkId
+          - inPath: id
+            inCustomResource: status.id
+        queries: *expandSettings
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+        fieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+          - inBody: id
+            inCustomResource: status.id
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/pipelines/checks/configurations/{id}
+        fieldMapping: *checkId
+{{- end }}

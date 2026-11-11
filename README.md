@@ -12,8 +12,8 @@ image, no plugin, no proxy.
 It replaces the unmigrated classic azuredevops-provider (hand-written controllers) and the legacy
 azuredevops KOG chart (oasgen-provider 0.10 plus a proxy plugin).
 
-> **Status: Phase 1.** `GitRepository`, `GitPush`, `Pipeline` and `PipelinePermission` are
-> native and live-verified against Azure DevOps. See [docs/overview.md](docs/overview.md) for
+> **Status: Phase 2a.** Eleven kinds (repositories, pushes, pipelines, permissions, projects,
+> environments, queues and pipeline checks) are native and live-verified against Azure DevOps. See [docs/overview.md](docs/overview.md) for
 > the per-kind behaviour, the plan and the design decisions.
 
 ## Install

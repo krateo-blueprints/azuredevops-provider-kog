@@ -16,10 +16,17 @@
       "items": {
         "type": "string",
         "enum": [
+          "CheckApproval",
+          "CheckExclusiveLock",
+          "CheckRequiredTemplate",
+          "CheckTask",
+          "Environment",
           "GitPush",
           "GitRepository",
           "Pipeline",
-          "PipelinePermission"
+          "PipelinePermission",
+          "Queue",
+          "TeamProject"
         ]
       }
     }
