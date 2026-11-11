@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.56.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.57.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.56.0 chart).
-- oasgen-provider **0.56.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.57.0 chart).
+- oasgen-provider **0.57.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -51,21 +51,28 @@ helm install azuredevops-provider-kog-config \
 
 Use a PAT scoped to one organization: global PATs stop working on 2026-12-01.
 
-### What the controller logs on oasgen-provider 0.56.0
+### What the controller logs
 
 Request bodies are redacted: a value a `secretRef` resolves (the ServiceEndpoint kinds' secret
 parameter) never appears in a logged request, and the PAT travels in the `Authorization` header,
-which is redacted by name. Two things are **not** redacted on 0.56.0; a fix for both is planned
-for oasgen-provider 0.57.0:
+which is redacted by name. Since oasgen-provider 0.57.0 (oasgen-provider#570), the two paths that
+were not redacted are: the error-body snippet every failed call logs at INFO (#567), and the
+response bodies `krateo.io/connector-verbose: "true"` dumps (#566). This chart did not measure
+that redaction itself (it needs a failed call that echoes a secret); the source is the upstream
+change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 
-- **Every failed call** logs the start of Azure DevOps' error body at INFO, with no flag needed
-  (oasgen-provider#567). If an error ever echoed a submitted field, a ServiceEndpoint secret
-  would reach the log. One measured 400 did not echo the body; that is one sample, not a guarantee.
-- **`krateo.io/connector-verbose: "true"`** on a CR also logs response bodies (oasgen-provider#566).
-  Azure DevOps returns secrets as `null`, so this is lower risk, but it is not redaction.
+Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
+logs only to those who may read the Secrets.
 
-Until that fix ships: keep `connector-verbose` off outside debugging, and give read access to the
-controller logs (and any log pipeline that collects them) only to those who may read the Secrets.
+### Upgrading oasgen-provider from 0.56.0 to 0.57.0
+
+Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider` (live CRs keep working; on
+this chart's 25 kinds the generated CRDs are byte-identical). **Forward only:** a CR reconciled by
+0.57.0 is not supported by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are
+read, #545 removes the per-resource Secret Role). Two log patterns are expected and harmless on
+0.57.0: one `Reconciler error … cannot update managed resource status` per RestDefinition right
+after the upgrade (oasgen-provider#579), and a controller restart each time the set of Secrets a
+kind's CRs reference changes (oasgen-provider#588); both are fixed upstream for 0.59.0.
 
 ## Migrating from the classic provider
 

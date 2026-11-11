@@ -3,7 +3,7 @@
 ## What is this
 
 A Krateo **KOG** provider, built on
-[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.56.0**. It exposes
+[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.57.0**. It exposes
 Azure DevOps REST resources (projects, Git repositories, pipelines, permissions, service
 connections, variable groups, artifact feeds, teams, groups and users) as Kubernetes kinds under
 `azuredevops.krateo.io`. The chart ships RestDefinitions plus trimmed OpenAPI documents only: no
@@ -19,7 +19,7 @@ azuredevops KOG chart (oasgen-provider 0.10 plus a proxy plugin).
 
 ## Install
 
-Prerequisite: oasgen-provider **0.56.0** on the cluster
+Prerequisite: oasgen-provider **0.57.0** on the cluster
 ([examples/dev-cluster](examples/dev-cluster/README.md)).
 
 ```sh
@@ -40,7 +40,7 @@ See [docs/configuration.md](docs/configuration.md).
 ## Examples
 
 - [examples/dev-cluster](examples/dev-cluster/README.md): local kind cluster with
-  oasgen-provider 0.56.0 and the Azure DevOps PAT Secret.
+  oasgen-provider 0.57.0 and the Azure DevOps PAT Secret.
 - [examples/repository-pipeline](examples/repository-pipeline/README.md): repository, initial
   push, YAML pipeline and pipeline permission, the flow verified live.
 
@@ -59,7 +59,7 @@ See [docs/configuration.md](docs/configuration.md).
 
 OpenAPI documents are generated, never hand-edited: `hack/fetch-specs.py hack/oas-recipes .specs`
 then `hack/trim-oas.py .specs hack/oas-recipes/<kind>.yaml chart/assets/<kind>.yaml`. CI checks
-freshness and runs `hack/render-check.py` against oasgen-render from the oasgen-provider 0.56.0
+freshness and runs `hack/render-check.py` against oasgen-render from the oasgen-provider 0.57.0
 image. `helm template` against a substituted copy (the `CHART_VERSION` placeholder fails
 `helm lint`). Live tests run on [examples/dev-cluster](examples/dev-cluster/README.md) against a
 dedicated, throwaway Azure DevOps organisation. Release: push an annotated `X.Y.Z` tag on `main`
