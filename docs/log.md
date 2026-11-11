@@ -11,6 +11,13 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-11 — 0.1.0
+
+- First release: both charts at 0.1.0 in GHCR and the krateo-blueprints helm index (`operators`),
+  25 kinds, pinned to oasgen-provider 0.56.0. The index copies are byte-identical to GHCR's.
+- Usage now states what the controller logs unredacted on 0.56.0: the error-body snippet of every
+  failed call at INFO (oasgen-provider#567) and, under `connector-verbose`, response bodies (#566).
+
 ## 2026-11-09 — oasgen-provider 0.56.0 and Phase 2c
 
 - Pin moved from 0.55.0 to 0.56.0. The cluster upgraded in place (CRDs chart first, then the
