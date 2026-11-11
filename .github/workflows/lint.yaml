@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyyaml
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .specs
           key: ado-specs-${{ hashFiles('hack/oas-recipes/*.yaml') }}
