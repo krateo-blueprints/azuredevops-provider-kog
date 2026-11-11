@@ -1,0 +1,10 @@
+apiVersion: azuredevops.krateo.io/v7-1-preview
+kind: PipelinePermission
+metadata: {name: example-env-permission, namespace: krateo-system}
+spec:
+  configurationRef: {name: azuredevops, namespace: krateo-system}
+  organization: ${ORG}
+  project: ${PROJECT}
+  resourceType: environment
+  resourceId: "${ENV_ID}"
+  allPipelines: {authorized: true}

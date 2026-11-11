@@ -1,0 +1,94 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Pipeline") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-pipeline
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-pipeline/pipeline.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: Pipeline
+    # A pipeline is identified by its name within its folder. Two identifiers, so AND is explicit
+    # (oasgen-provider#444: the OR default can adopt, and delete, the wrong resource).
+    identifiers:
+      - name
+      - path
+    # Append-only once generated. id addresses get/update/delete; revision is the optimistic-
+    # concurrency token the PUT must echo.
+    additionalStatusFields:
+      - id
+      - revision
+      - url
+      - queueStatus
+    # Every query parameter of every verb is a read/clone option, not desired state; oasgen merges
+    # them all into the spec (oasgen-provider#498), so all are excluded. `name` and `path` are bound
+    # by fieldMapping on findby and are therefore not separate spec fields. (Immutable list.)
+    excludedSpecFields:
+      - definitionToCloneId
+      - definitionToCloneRevision
+      - repositoryId
+      - repositoryType
+      - queryOrder
+      - $top
+      - continuationToken
+      - minMetricsTime
+      - definitionIds
+      - builtAfter
+      - notBuiltAfter
+      - includeAllProperties
+      - includeLatestBuilds
+      - taskIdFilter
+      - processType
+      - yamlFilename
+      - revision
+      - propertyFilters
+      - secretsSourceDefinitionId
+      - secretsSourceDefinitionRevision
+    # Compare what the PUT expresses: name, path, process, repository.
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/build/definitions
+        itemsPath: value
+        identifiersMatchPolicy: AND
+        fieldMapping:
+          - inQuery: name
+            inCustomResource: spec.name
+          - inQuery: path
+            inCustomResource: spec.path
+        pagination:
+          type: continuationToken
+          continuationToken:
+            request: {tokenIn: query, tokenPath: continuationToken}
+            response: {tokenIn: header, tokenPath: x-ms-continuationtoken}
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/build/definitions
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/build/definitions/{definitionId}
+        fieldMapping: &definitionId
+          - inPath: definitionId
+            inCustomResource: status.id
+      # PUT replaces the whole definition: anything set outside the CR (UI variables, trigger
+      # overrides) is reset to what the CR declares. A YAML pipeline keeps its config in its file.
+      - action: update
+        method: PUT
+        path: /{organization}/{project}/_apis/build/definitions/{definitionId}
+        fieldMapping:
+          - inPath: definitionId
+            inCustomResource: status.id
+          - inBody: id
+            inCustomResource: status.id
+          - inBody: revision
+            inCustomResource: status.revision
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/build/definitions/{definitionId}
+        fieldMapping: *definitionId
+{{- end }}

@@ -1,0 +1,60 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "GitRepository") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-gitrepository
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-gitrepository/gitrepository.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: GitRepository
+    # A repository name is unique within a project, and is known before creation.
+    identifiers:
+      - name
+    # Append-only once generated: id drives get/update/delete; the rest is what users consume.
+    additionalStatusFields:
+      - id
+      - defaultBranch
+      - remoteUrl
+      - sshUrl
+      - webUrl
+      - url
+    # The findby list operation's optional query parameters are read options, not desired state,
+    # yet oasgen-provider 0.54.0 merges them into the spec (measured on the first render). They
+    # are excluded so a CR carries only what the user decides. (Immutable list.)
+    excludedSpecFields:
+      - includeAllUrls
+      - includeHidden
+      - includeLinks
+    # Compare exactly what the PATCH can change ({name, defaultBranch}; defaultBranch is not a spec
+    # field until oasgen-provider#491). project, parentRepository and sourceRef are create-only.
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      # spec.project is the {project} path parameter (name or id); the create body carries no
+      # project of its own (see hack/oas-recipes/gitrepository.yaml).
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/git/repositories
+        itemsPath: value
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/git/repositories
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}
+        fieldMapping: &repositoryId
+          - inPath: repositoryId
+            inCustomResource: status.id
+      - action: update
+        method: PATCH
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}
+        fieldMapping: *repositoryId
+      - action: delete
+        method: DELETE
+        path: /{organization}/{project}/_apis/git/repositories/{repositoryId}
+        fieldMapping: *repositoryId
+{{- end }}

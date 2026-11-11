@@ -2,3 +2,6 @@
 *.bak
 .DS_Store
 /tmp/
+.specs/
+__pycache__/
+*.pyc

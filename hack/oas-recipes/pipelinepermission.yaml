@@ -1,0 +1,12 @@
+# PipelinePermission: which pipelines may use one protected resource (environment, queue,
+# service endpoint, variable group, secure file, repository).
+source:
+  area: approvalsAndChecks
+  file: pipelinePermissions.json
+  swhid: swh:1:cnt:eceab646a8ca2e613c46f2c85d0fe2f85e9048ed
+info:
+  title: Azure DevOps - Pipeline Permissions
+keep:
+  '/{organization}/{project}/_apis/pipelines/pipelinepermissions/{resourceType}/{resourceId}': [get, patch]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken

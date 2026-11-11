@@ -1,0 +1,38 @@
+{{- /*
+  The api-version each kind's verbs send, keyed by Kind. The verb set must equal the kind's
+  RestDefinition verbs (the generated Configuration CRD requires exactly those), and
+  hack/render-check.py validates every rendered object against the CRDs oasgen generates.
+*/ -}}
+{{- $kinds := dict
+  "GitRepository"      (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
+  "GitPush"            (dict "create" "7.1" "get" "7.1")
+  "Pipeline"           (dict "findby" "7.1" "create" "7.1" "get" "7.1" "update" "7.1" "delete" "7.1")
+  "PipelinePermission" (dict "create" "7.1-preview.1" "get" "7.1-preview.1" "update" "7.1-preview.1")
+-}}
+{{- range $kind := keys $kinds | sortAlpha }}
+{{- if or (not $.Values.kinds) (has $kind $.Values.kinds) }}
+---
+apiVersion: {{ $.Values.resourceGroup }}/v1alpha1
+kind: {{ $kind }}Configuration
+metadata:
+  name: {{ $.Values.configurationName }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  authentication:
+    basic:
+      usernameRef:
+        name: {{ $.Values.secretName }}
+        namespace: {{ $.Release.Namespace }}
+        key: {{ $.Values.usernameKey }}
+      passwordRef:
+        name: {{ $.Values.secretName }}
+        namespace: {{ $.Release.Namespace }}
+        key: {{ $.Values.tokenKey }}
+  configuration:
+    query:
+      {{- range $verb, $v := index $kinds $kind }}
+      {{ $verb }}:
+        api-version: {{ $v | quote }}
+      {{- end }}
+{{- end }}
+{{- end }}

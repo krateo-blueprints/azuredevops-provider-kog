@@ -1,0 +1,21 @@
+# Renders one <Kind>Configuration per kind in the release namespace, all named
+# `configurationName` and all pointing at the same Secret. Install it only after
+# azuredevops-provider-kog's RestDefinitions are Ready; a kind that is not served fails the render.
+# Keep values flat (the CDC derives the component CRD from values.schema.json).
+
+# Must match azuredevops-provider-kog's resourceGroup.
+resourceGroup: azuredevops.krateo.io
+
+# The name every Configuration carries; CRs reference it via spec.configurationRef.name.
+configurationName: azuredevops
+
+# The Secret holding the PAT, in the release namespace. This chart does not create it.
+secretName: azuredevops-pat
+# Azure DevOps authenticates on the PAT in the basic-auth password; the username may be any
+# non-empty value, so the Secret needs both keys.
+usernameKey: username
+tokenKey: token
+
+# Which kinds to render, by Kind name. Empty renders all. Must not name a kind the provider
+# chart does not render.
+kinds: []

@@ -1,0 +1,8 @@
+apiVersion: azuredevops.krateo.io/v7-1
+kind: GitRepository
+metadata: {name: example-repo, namespace: krateo-system}
+spec:
+  configurationRef: {name: azuredevops, namespace: krateo-system}
+  organization: ${ORG}
+  project: ${PROJECT}
+  name: example-repo

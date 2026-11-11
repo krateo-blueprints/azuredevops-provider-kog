@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Pipeline") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-pipeline
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/pipeline.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  pipeline.yaml: |
+{{ .Files.Get "assets/pipeline.yaml" | indent 4 }}
+{{- end }}

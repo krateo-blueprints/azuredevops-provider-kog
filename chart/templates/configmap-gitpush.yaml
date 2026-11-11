@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "GitPush") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-gitpush
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/gitpush.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  gitpush.yaml: |
+{{ .Files.Get "assets/gitpush.yaml" | indent 4 }}
+{{- end }}

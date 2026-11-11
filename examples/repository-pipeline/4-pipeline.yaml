@@ -1,0 +1,11 @@
+apiVersion: azuredevops.krateo.io/v7-1
+kind: Pipeline
+metadata: {name: example-pipeline, namespace: krateo-system}
+spec:
+  configurationRef: {name: azuredevops, namespace: krateo-system}
+  organization: ${ORG}
+  project: ${PROJECT}
+  name: example-pipeline
+  path: '\examples'                  # Azure DevOps's own folder form; '\' is the root
+  process: {type: 2, yamlFilename: azure-pipelines.yml}
+  repository: {id: "<repository-id>", type: TfsGit, defaultBranch: refs/heads/main}
