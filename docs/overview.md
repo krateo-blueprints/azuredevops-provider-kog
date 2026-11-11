@@ -142,4 +142,6 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#483 | "identifiers are absent from the items the findby response carries" is a false positive when the fields are inherited through `allOf` (Check, Pipeline, Feed kinds adopt live). |
 | oasgen-provider#521 | A verb cannot send a raw (non-JSON) body sourced from a Secret: `SecureFile` waits (Azure DevOps stores the request bytes verbatim, so a JSON body would silently become the file). |
 | oasgen-provider#529 | A failed write reported as HTTP 200 with the failure in the body is treated as success: `User` is held. |
+| oasgen-provider#567 | On 0.56.0 a failed call's Azure DevOps error body is logged at INFO unredacted, with no flag: a secret echoed in an error would reach the log ([usage](usage.md)). Fix planned for 0.57.0. |
+| oasgen-provider#566 | On 0.56.0 `krateo.io/connector-verbose` logs response bodies unredacted (Azure DevOps returns secrets as `null`). Fix planned for 0.57.0. |
 | oasgen-provider#528 | Request mappings whose CR path does not resolve are skipped silently; the permission kinds' jq refuses on a missing component instead of composing a wrong token. |
