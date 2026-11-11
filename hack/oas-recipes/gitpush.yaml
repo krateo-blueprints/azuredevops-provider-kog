@@ -82,3 +82,21 @@ patches:
   - op: delete
     at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes', post, responses, '200']
     reason: Replaced by 201 (see the previous patch); a successful push does not return 200.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes', post, parameters, 2, pattern]
+    value: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    reason: >-
+      The source accepts a name or an id. A name breaks when the repository is renamed: the push's get then answers 404, the controller reads the push as absent and re-sends the create, which would push the same commits again to any repository holding the old name (measured 2026-11-11 on 0.57.0: two CannotCreateExternalResource 404s right after a rename). A GUID never changes.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes', post, parameters, 2, description]
+    value: The repository's ID (a GUID, e.g. GitRepository status.id). A repository name is refused.
+    reason: Same patch as the pattern above; the source says "The name or ID of the repository".
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes/{pushId}', get, parameters, 1, pattern]
+    value: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    reason: >-
+      The source accepts a name or an id. A name breaks when the repository is renamed: the push's get then answers 404, the controller reads the push as absent and re-sends the create, which would push the same commits again to any repository holding the old name (measured 2026-11-11 on 0.57.0: two CannotCreateExternalResource 404s right after a rename). A GUID never changes.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pushes/{pushId}', get, parameters, 1, description]
+    value: The repository's ID (a GUID, e.g. GitRepository status.id). A repository name is refused.
+    reason: Same patch as the pattern above; the source says "The name or ID of the repository".

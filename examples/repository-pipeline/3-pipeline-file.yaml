@@ -5,7 +5,7 @@ spec:
   configurationRef: {name: azuredevops, namespace: krateo-system}
   organization: ${ORG}
   project: ${PROJECT}
-  repositoryId: example-repo
+  repositoryId: ${REPO_ID}
   refUpdates:
     - name: refs/heads/main
       oldObjectId: "<main-head>"     # current objectId of refs/heads/main (compare-and-swap)

@@ -8,4 +8,4 @@ spec:
   name: example-pipeline
   path: '\examples'                  # Azure DevOps's own folder form; '\' is the root
   process: {type: 2, yamlFilename: azure-pipelines.yml}
-  repository: {id: "<repository-id>", type: TfsGit, defaultBranch: refs/heads/main}
+  repository: {id: "${REPO_ID}", type: TfsGit, defaultBranch: refs/heads/main}

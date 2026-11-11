@@ -5,7 +5,7 @@ spec:
   configurationRef: {name: azuredevops, namespace: krateo-system}
   organization: ${ORG}
   project: ${PROJECT}
-  repositoryId: example-repo        # repository name or id
+  repositoryId: ${REPO_ID}          # the repository's GUID (GitRepository status.id); a name is refused
   refUpdates:
     - name: refs/heads/main
       oldObjectId: "0000000000000000000000000000000000000000"   # the branch does not exist yet
