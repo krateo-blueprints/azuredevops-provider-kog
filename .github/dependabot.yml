@@ -1,0 +1,13 @@
+# krateo-blueprints/charts PUBLISHING.md: the index publisher is pinned by full commit SHA, because it
+# receives CHARTS_PUBLISH_TOKEN (an org-wide write token) and a movable ref would let whoever moves it run
+# code with that token here. Dependabot keeps the SHA pin current: a new publisher release arrives as a
+# reviewed pull request, not silently. It also covers the actions/* refs in every workflow; branch refs
+# such as the shared krateo-platformops reusables at @main are not version refs and are left alone.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

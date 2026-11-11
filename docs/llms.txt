@@ -11,7 +11,7 @@ docs/usage.md: install on oasgen-provider 0.55.0, the PAT Secret, migration from
 docs/configuration.md: chart values, the per-kind <Kind>Configuration, the config chart (values + per-kind verbs/api-version), CI-enforced RestDefinition invariants
 docs/api.md: the generated CRDs, version derivation, Phase 1 kinds' spec/status fields
 docs/examples.md: index of runnable examples
-docs/release.md: one plain-semver tag -> release-oci -> ghcr.io/krateo-blueprints/charts
+docs/release.md: one plain-semver tag -> preflight (semver, lint passed, token set) -> both charts to GHCR -> same bytes pulled back -> krateo-blueprints helm index, operators channel
 docs/log.md: curated history
 examples/dev-cluster/README.md: local kind cluster with oasgen-provider 0.55.0 and the ADO PAT Secret
 examples/repository-pipeline/README.md + 1..5-*.yaml: GitRepository -> GitPush x2 -> Pipeline -> PipelinePermission, with delete semantics
