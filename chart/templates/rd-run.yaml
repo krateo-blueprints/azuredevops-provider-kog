@@ -1,0 +1,46 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Run") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-run
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-run/run.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: Run
+    # Every POST starts a NEW run (measured), so nothing in the spec identifies one: no identifiers and
+    # no findby. The CR observes its own run by status.id; a lost create response cannot be recovered
+    # and the run is triggered again on the next reconcile (oasgen-provider#503).
+    # Append-only once generated. state goes inProgress -> completed; result is succeeded, failed or
+    # canceled. Ready means the run exists, whatever its result.
+    additionalStatusFields:
+      - id
+      - name
+      - state
+      - result
+      - url
+      - createdDate
+      - finishedDate
+    # Version of the pipeline definition to run, a create-time read option. (Immutable list.)
+    excludedSpecFields:
+      - pipelineVersion
+    # A run is immutable once started: compare nothing from the spec.
+    compareScope: identifiersAndStatus
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: create
+        method: POST
+        path: /{organization}/{project}/_apis/pipelines/{pipelineId}/runs
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/pipelines/{pipelineId}/runs/{runId}
+        fieldMapping:
+          - inPath: runId
+            inCustomResource: status.id
+      # No update (a run cannot change) and no delete: deleting the CR releases it and keeps the run.
+      # Cancelling is not a delete (the run stays readable, so the finalizer would never release), and
+      # DELETE refuses a run in progress with 403 (both measured).
+{{- end }}

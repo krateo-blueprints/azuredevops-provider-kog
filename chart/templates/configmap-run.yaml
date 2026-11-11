@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "Run") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-run
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/run.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  run.yaml: |
+{{ .Files.Get "assets/run.yaml" | indent 4 }}
+{{- end }}

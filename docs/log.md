@@ -24,6 +24,15 @@ Curated history; release notes live in GitHub Releases.
   event on a findby kind's first create, `Warning` only when absence keeps being inferred for the
   same spec generation. Observed exactly once per create in the suite.
 
+## 2026-11-08 — Phase 4 (Run)
+
+- `Run`, live-verified on oasgen-provider 0.54.1: a CR triggers one run of a YAML pipeline and
+  reports its state and result. Every POST starts a new run, so there is no adoption; a run is
+  immutable; deleting the CR releases it and keeps the run, its logs and history.
+- `SecureFile` is not shipped: its upload body is the raw file bytes (from a Secret), which a verb
+  cannot send today (oasgen-provider#521, measured: Azure DevOps stores the request bytes verbatim,
+  so a JSON body would silently become the file), and Secret-backed kinds wait on #510.
+
 ## 2026-11-08 — Phase 2b
 
 - Five more native kinds, live-verified on oasgen-provider 0.54.1: `PullRequest` (delete abandons;

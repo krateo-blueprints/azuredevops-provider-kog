@@ -42,6 +42,7 @@ Write CRs against that version, not `v1alpha1`.
 | `PolicyRequiredReviewers` | `azuredevops.krateo.io/v7-1` | as above, with `settings {requiredReviewerIds[], minimumApproverCount, creatorVoteCounts, message, filenamePatterns[], scope[]}` | `id`, `revision` |
 | `PolicyStatus` | `azuredevops.krateo.io/v7-1` | as above, with `settings {statusName, statusGenre, invalidateOnSourceUpdate, authorId, defaultDisplayName, policyApplicability, filenamePatterns[], scope[]}` | `id`, `revision` |
 | `Feed` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `description`, `badgesEnabled`, `hideDeletedPackageVersions` | `id`, `url` |
+| `Run` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `pipelineId`, `resources.repositories.<name> {refName, version}`, `templateParameters`, `stagesToSkip[]` | `id`, `name`, `state`, `result`, `url`, `createdDate`, `finishedDate` |
 
 Every kind also has `spec.configurationRef` (`{name, namespace}`) and the standard conditions.
 `status` fields are append-only once generated.

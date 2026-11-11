@@ -74,7 +74,8 @@ addresses the project.
 | held | `Team` | Built and verified; held until offset pagination exists (oasgen-provider#486) |
 | held | `PolicyMinimumReviewers`, `PolicyWorkItemLinking`, `PolicyCommentRequirements`, `PolicyMergeStrategy` | Lifecycle verified; held because they cannot adopt (identity is in `settings.scope[0]`, oasgen-provider#517, #519) |
 | 3 | `Group`, `User`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | Permission deletes wait on oasgen-provider #490 |
-| 4 | `Run`, `SecureFile` (observe and delete only) | Full lifecycle live per kind |
+| 4 | `Run` | ✅ verified live 2026-11-08 on 0.54.1 |
+| 4 (waits) | `SecureFile` | The upload body is the raw file bytes, from a Secret: waits on oasgen-provider#521 and #510 |
 | 5 | Migration guides, deprecation of the predecessors, first release | — |
 
 Live testing means: create, then no drift over two poll intervals, update, delete, and re-adoption
@@ -98,6 +99,7 @@ by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 | `PullRequest` | findby `sourceRefName`+`targetRefName` (AND, active PRs, filtered server-side), then get by `status.pullRequestId` | PATCH (title, description, draft) | **abandon** (PATCH `status: abandoned`) | One active PR per branch pair (measured). An abandoned PR counts as absent, so a PR abandoned in the UI is re-opened by its CR; a completed PR stays present. |
 | `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus` | get by `status.id` only (**no findby**) | PUT (full body) | DELETE (soft: `isDeleted`) | Any number per branch, even identical (measured), so they never adopt. `type` defaulted; `scope[].repositoryId` is the repository GUID. `validDuration` must be 0 unless `queueOnSourceUpdateOnly` is true. |
 | `Feed` | findby `name`, then get by `status.id` | PATCH (rename, description, flags) | soft delete (feed recycle bin) | Served from `feeds.dev.azure.com`. **A deleted feed's name stays reserved** (409 on re-create, measured still reserved 10 minutes after purging), so a CR re-created with the same name waits on Azure DevOps. |
+| `Run` | get by `status.id` only (**no findby**) | none (a run is immutable) | **none**: deleting the CR releases it and keeps the run | Every POST starts a new run (measured), so it never adopts, and a lost create response re-triggers (oasgen-provider#503). Ready means the run exists; read `status.state`/`status.result`. Cancel can't be a delete (the run stays readable) and DELETE refuses a running run (403). |
 
 ### GitPush: recovering a lost create response
 
@@ -129,3 +131,4 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#517, #519 | Identifiers that index into an array (`settings.scope.0.*`) never match at runtime, and generate an object-keyed status: the one-per-branch policy kinds are held. |
 | oasgen-provider#518 | A business-rule 403 (e.g. a duplicate policy) is logged as an authorisation denial and the verb is suppressed. |
 | oasgen-provider#483 | "identifiers are absent from the items the findby response carries" is a false positive when the fields are inherited through `allOf` (Check, Pipeline, Feed kinds adopt live). |
+| oasgen-provider#521 | A verb cannot send a raw (non-JSON) body sourced from a Secret: `SecureFile` waits (Azure DevOps stores the request bytes verbatim, so a JSON body would silently become the file). |

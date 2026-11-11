@@ -45,6 +45,7 @@
           "PolicyStatus",
           "PullRequest",
           "Queue",
+          "Run",
           "TeamProject"
         ]
       }
