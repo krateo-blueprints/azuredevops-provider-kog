@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: azuredevops-provider-kog — overview
-description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.56.0 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
+description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.57.0 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, oasgen-provider, rest-dynamic-controller, azure-devops]
 timestamp: 2026-11-07T00:00:00Z
@@ -21,7 +21,7 @@ nothing.
 
 | Decision | Choice | Why |
 |---|---|---|
-| oasgen-provider | `krateo-platformops/oasgen-provider` **0.56.0**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
+| oasgen-provider | `krateo-platformops/oasgen-provider` **0.57.0**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
 | API group | `azuredevops.krateo.io` | The family convention (`github.krateo.io`). This makes the chart **mutually exclusive** with the classic provider on one cluster; [usage](./usage.md) has the migration. |
 | Kind names | Singular: `Group`, `User`, `SecureFile`, `VariableGroup`, `ServiceEndpoint` | Kubernetes convention. The classic provider used `Groups`, `Users`, `SecureFiles`, `VariableGroups`, `Endpoint`. |
 | References | Azure DevOps names or ids, not Kubernetes `*Ref`s | A RestDefinition resolves values from its own CR. Most ADO paths accept a project or repository name in place of its id. |
@@ -70,7 +70,7 @@ addresses the project.
 | 1 | `GitRepository`, `GitPush`, `Pipeline`, `PipelinePermission`, plus an `oasgen-render` CI gate, the config chart and kind-specific checks | ✅ verified live 2026-11-07 (PipelinePermission without delete) |
 | 2a | `TeamProject` (async), `Environment`, `Queue`, `CheckApproval`, `CheckExclusiveLock`, `CheckRequiredTemplate`, `CheckTask` | ✅ verified live 2026-11-07 on 0.54.1 |
 | 2b | `PullRequest`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus`, `Feed` | ✅ verified live 2026-11-08 on 0.54.1 |
-| 2c | `ServiceEndpointUsernamePassword`, `ServiceEndpointToken`, `ServiceEndpointGitHubToken`, `ServiceEndpointServicePrincipal` | ✅ verified live 2026-11-09 on 0.56.0; adopting an existing connection waits on oasgen-provider#540 |
+| 2c | `ServiceEndpointUsernamePassword`, `ServiceEndpointToken`, `ServiceEndpointGitHubToken`, `ServiceEndpointServicePrincipal` | ✅ verified live 2026-11-09 on 0.56.0; adopting an existing connection verified 2026-11-11 on 0.57.0 |
 | planned | `VariableGroup` | Secret variables are a map keyed by user-chosen names, and a `secretRef` addresses one path: needs a map-valued resolver or a wildcard path (to be designed with oasgen-provider) |
 | held | `Team` | Built and verified; held until offset pagination exists (oasgen-provider#486) |
 | held | `PolicyMinimumReviewers`, `PolicyWorkItemLinking`, `PolicyCommentRequirements`, `PolicyMergeStrategy` | Lifecycle verified; held because they cannot adopt (identity is in `settings.scope[0]`, oasgen-provider#517, #519) |
@@ -106,7 +106,7 @@ by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 | `GroupMembership` | get by the two descriptors (spec) | none | DELETE (idempotent) | A membership that already exists is adopted by the first get. Subject: a Group's or a user's Graph descriptor. |
 | `RepositoryPermission` | get by token + identity descriptor, both **derived** from the spec | POST (replace) | DELETE (idempotent) | A group's entry in the Git security namespace. `permissions` maps the 21 actions to `Allow`/`Deny`/`NotSet`, defaulting to `NotSet`, so a bit set outside the CR is drift. The derivation refuses a missing or malformed component (an error condition, not a wrong request). Users as subjects wait on #508. |
 | `FeedPermission` | get by the derived identity descriptor | PATCH (role) | PATCH role `none` | A group's role on a feed. A repeated `none` answers 500 (not idempotent); a stale read can provoke it, and the controller retries until the read converges. |
-| `ServiceEndpointUsernamePassword`, `ServiceEndpointToken`, `ServiceEndpointGitHubToken`, `ServiceEndpointServicePrincipal` | findby `name` (`endpointNames`), then get by `status.id` | PUT (full body + `id`) | DELETE from every project in `serviceEndpointProjectReferences` | One kind per authorization scheme (schemes and parameter names measured from `GET _apis/serviceendpoint/types`; GitHub tokens are scheme `Token` with `AccessToken`). The secret parameter is not a spec field: `<parameter>SecretRef {name, key}` names a Secret in the CR's namespace, oasgen-provider grants the controller read access to exactly that Secret, and the reference is never sent. Project references take project GUIDs (a name is a 400). Azure DevOps returns secrets as `null`, so a Secret's value cannot be compared: a rotated Secret reaches Azure DevOps on the next spec change, not by itself. **Adopting an existing connection does not converge yet**: the CR finds it, but every update fails until oasgen-provider#540 ships. |
+| `ServiceEndpointUsernamePassword`, `ServiceEndpointToken`, `ServiceEndpointGitHubToken`, `ServiceEndpointServicePrincipal` | findby `name` (`endpointNames`), then get by `status.id` | PUT (full body + `id`) | DELETE from every project in `serviceEndpointProjectReferences` | One kind per authorization scheme (schemes and parameter names measured from `GET _apis/serviceendpoint/types`; GitHub tokens are scheme `Token` with `AccessToken`). The secret parameter is not a spec field: `<parameter>SecretRef {name, key}` names a Secret in the CR's namespace, oasgen-provider grants the controller read access to exactly that Secret, and the reference is never sent. Project references take project GUIDs (a name is a 400). Azure DevOps returns secrets as `null`, so a Secret's value cannot be compared: a rotated Secret reaches Azure DevOps on the next spec change, not by itself. Adopting an existing connection works on 0.57.0 (oasgen-provider#540): the CR finds it by name and corrects it to the spec. |
 
 ### GitPush: recovering a lost create response
 
@@ -134,7 +134,7 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#508 | Dependent lookups cannot send `api-version`: `Queue` needs `spec.pool.id`; Phase 3 identity lookups wait. |
 | oasgen-provider#510 | `secretRef` resources failed on 0.53.0 to 0.55.0; 0.56.0 grants each referenced Secret (#527). Still open: revocation waits for the drift poll (measured 48 to 181 s after a delete, healthy CRs). |
 | oasgen-provider#537 | A `secretRef` mapping must name its source in `inCustomResource`, or the reference object is sent to the vendor (Azure DevOps answers 400): every ServiceEndpoint kind sets it. |
-| oasgen-provider#540 | Adopting an existing resource of a `secretRef` kind never converges: the update demands a per-resource Role only a create makes. The ServiceEndpoint kinds create and manage new connections; adoption waits. |
+| oasgen-provider#540 | Fixed in 0.57.0: adopting an existing connection converges (measured 2026-11-11: adopted, corrected, deleted; no duplicate). On 0.56.0 every update of an adopted resource failed. |
 | oasgen-provider#486 | No offset pagination (Azure DevOps also needs a short-page signal and cross-page consistency, measured): `Team` is held. |
 | oasgen-provider#514 | A bracket-escaped `inQuery` (`'["searchCriteria.sourceRefName"]'`) is not recognised as supplying its parameter at generation: `PullRequest` also excludes the escaped names (runtime binding verified on the wire). |
 | oasgen-provider#517, #519 | Identifiers that index into an array (`settings.scope.0.*`) never match at runtime, and generate an object-keyed status: the one-per-branch policy kinds are held. |
@@ -142,6 +142,7 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#483 | "identifiers are absent from the items the findby response carries" is a false positive when the fields are inherited through `allOf` (Check, Pipeline, Feed kinds adopt live). |
 | oasgen-provider#521 | A verb cannot send a raw (non-JSON) body sourced from a Secret: `SecureFile` waits (Azure DevOps stores the request bytes verbatim, so a JSON body would silently become the file). |
 | oasgen-provider#529 | A failed write reported as HTTP 200 with the failure in the body is treated as success: `User` is held. |
-| oasgen-provider#567 | On 0.56.0 a failed call's Azure DevOps error body is logged at INFO unredacted, with no flag: a secret echoed in an error would reach the log ([usage](usage.md)). Fix planned for 0.57.0. |
-| oasgen-provider#566 | On 0.56.0 `krateo.io/connector-verbose` logs response bodies unredacted (Azure DevOps returns secrets as `null`). Fix planned for 0.57.0. |
+| oasgen-provider#567 | Fixed in 0.57.0 (#570): a failed call's error-body snippet is redacted. 0.56.0 logs it unredacted at INFO ([usage](usage.md)). |
+| oasgen-provider#566 | Fixed in 0.57.0 (#570): `krateo.io/connector-verbose` response dumps are redacted. |
+| oasgen-provider#579, #588 | On 0.57.0: one status-update conflict per RestDefinition after an upgrade, and a controller restart whenever a kind's set of referenced Secrets changes. Harmless here; fixes planned for 0.59.0. |
 | oasgen-provider#528 | Request mappings whose CR path does not resolve are skipped silently; the permission kinds' jq refuses on a missing component instead of composing a wrong token. |

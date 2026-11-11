@@ -22,6 +22,24 @@ Curated history; release notes live in GitHub Releases.
 - Breaking for a CR written with a name: set `repositoryId` to `GitRepository` `status.id`.
   The example takes it from there (`REPO_ID`).
 
+## 2026-11-11 — oasgen-provider 0.57.0
+
+- Pin moved from 0.56.0 to 0.57.0. The cluster upgraded in place: CRDs chart first (its
+  RestDefinition CRD is byte-identical to 0.56.0's), then the provider. All 25 RestDefinitions
+  re-rendered and stamped `0.57.0-cb969ddcecee…`, every controller rolled to
+  rest-dynamic-controller 0.57.0, and the live CRs kept identical conditions. The render check
+  gives the same 53 warnings on 0.56.0 and 0.57.0.
+- Full regression on 0.57.0: 171 of 173 checks across 11 live suites. Both failures were the
+  tests, and both reran clean once fixed: a drift check that could pass before the drift reached
+  Azure DevOps, and a create check whose wait could fail on a busy control plane.
+- Adopting an existing service connection now converges (oasgen-provider#540): smoke-se 50/50.
+- Logging: 0.57.0 redacts the error-body snippet and verbose response dumps (#566, #567).
+- Found and reported upstream: one status-update conflict per RestDefinition on upgrade
+  (oasgen-provider#579) and an unconditional controller restart whenever a kind's set of
+  referenced Secrets changes (#588, measured: the ConfigMap and image unchanged, the pod restarted).
+  Both are harmless here and planned for 0.59.0.
+- Forward only: #544 and #545 make a 0.57.0-reconciled CR unsupported on 0.56.0.
+
 ## 2026-11-11 — 0.1.0
 
 - First release: both charts at 0.1.0 in GHCR and the krateo-blueprints helm index (`operators`),
