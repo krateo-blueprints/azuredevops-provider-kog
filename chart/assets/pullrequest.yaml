@@ -12,6 +12,14 @@
 #   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}/patch/parameters/1/schema
 #   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/post/responses
 #   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/get/responses/200/schema
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/post/parameters/2/pattern
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/post/parameters/2/description
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/get/parameters/1/pattern
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/get/parameters/1/description
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}/get/parameters/1/pattern
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}/get/parameters/1/description
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}/patch/parameters/2/pattern
+#   set paths//{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}/patch/parameters/2/description
 openapi: 3.0.3
 info:
   title: Azure DevOps - Pull Requests
@@ -44,10 +52,12 @@ paths:
           type: string
       - in: path
         name: repositoryId
-        description: The repository ID of the pull request's target branch.
+        description: The repository's ID (a GUID, e.g. GitRepository status.id). A repository name is
+          refused.
         required: true
         schema:
           type: string
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
       - in: path
         name: project
         description: Project ID or project name
@@ -223,10 +233,12 @@ paths:
           type: string
       - in: path
         name: repositoryId
-        description: The repository ID of the pull request's target branch.
+        description: The repository's ID (a GUID, e.g. GitRepository status.id). A repository name is
+          refused.
         required: true
         schema:
           type: string
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
       - in: path
         name: project
         description: Project ID or project name
@@ -269,10 +281,12 @@ paths:
           type: string
       - in: path
         name: repositoryId
-        description: The repository ID of the pull request's target branch.
+        description: The repository's ID (a GUID, e.g. GitRepository status.id). A repository name is
+          refused.
         required: true
         schema:
           type: string
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
       - in: path
         name: pullRequestId
         description: The ID of the pull request to retrieve.
@@ -358,10 +372,12 @@ paths:
           type: string
       - in: path
         name: repositoryId
-        description: The repository ID of the pull request's target branch.
+        description: The repository's ID (a GUID, e.g. GitRepository status.id). A repository name is
+          refused.
         required: true
         schema:
           type: string
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
       - in: path
         name: pullRequestId
         description: ID of the pull request to update.

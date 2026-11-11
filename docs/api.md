@@ -27,7 +27,7 @@ Write CRs against that version, not `v1alpha1`.
 | Kind | apiVersion | spec | status |
 |---|---|---|---|
 | `GitRepository` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `parentRepository` (fork), `sourceRef` (fork) | `id`, `name`, `defaultBranch`, `remoteUrl`, `sshUrl`, `webUrl`, `url` |
-| `GitPush` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (name or id), `refUpdates[]` `{name, oldObjectId}`, `commits[]` `{comment, changes[] {changeType, item.path, newContent {content, contentType}}}` | `pushId`, `date`, `url` |
+| `GitPush` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (the repository's GUID; a name is refused), `refUpdates[]` `{name, oldObjectId}`, `commits[]` `{comment, changes[] {changeType, item.path, newContent {content, contentType}}}` | `pushId`, `date`, `url` |
 | `Pipeline` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `path`, `process {type: 2, yamlFilename}`, `repository {id, type, defaultBranch}` | `id`, `name`, `path`, `revision`, `url`, `queueStatus` |
 | `PipelinePermission` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `resourceType`, `resourceId`, `allPipelines {authorized}`, `pipelines[] {id, authorized}` | `resource` |
 | `TeamProject` | `azuredevops.krateo.io/v7-1` | `organization`, `name`, `description`, `visibility`, `capabilities {versioncontrol.sourceControlType, processTemplate.templateTypeId}` | `id`, `name`, `state`, `revision`, `url`, `visibility` |
@@ -37,7 +37,7 @@ Write CRs against that version, not `v1alpha1`.
 | `CheckExclusiveLock` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `type` (defaulted), `resource {type, id}`, `timeout` | `id`, `version`, `type`, `resource` |
 | `CheckRequiredTemplate` | `azuredevops.krateo.io/v7-1-preview` | as above, plus `settings.extendsChecks[] {repositoryType, repositoryName, repositoryRef, templatePath}` | `id`, `version`, `type`, `resource` |
 | `CheckTask` | `azuredevops.krateo.io/v7-1-preview` | as above, plus `settings {definitionRef {id, name, version}, displayName, inputs, retryInterval, linkedVariableGroup}` | `id`, `version` |
-| `PullRequest` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (name or id), `sourceRefName`, `targetRefName`, `title`, `description`, `isDraft` | `pullRequestId`, `status`, `url`, `creationDate` |
+| `PullRequest` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (the repository's GUID; a name is refused), `sourceRefName`, `targetRefName`, `title`, `description`, `isDraft` | `pullRequestId`, `status`, `url`, `creationDate` |
 | `PolicyBuildValidation` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `isEnabled`, `isBlocking`, `type` (defaulted), `settings {buildDefinitionId, displayName, queueOnSourceUpdateOnly, manualQueueOnly, validDuration, filenamePatterns[], scope[] {repositoryId, refName, matchKind}}` | `id`, `revision` |
 | `PolicyRequiredReviewers` | `azuredevops.krateo.io/v7-1` | as above, with `settings {requiredReviewerIds[], minimumApproverCount, creatorVoteCounts, message, filenamePatterns[], scope[]}` | `id`, `revision` |
 | `PolicyStatus` | `azuredevops.krateo.io/v7-1` | as above, with `settings {statusName, statusGenre, invalidateOnSourceUpdate, authorId, defaultDisplayName, policyApplicability, filenamePatterns[], scope[]}` | `id`, `revision` |

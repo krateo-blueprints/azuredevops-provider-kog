@@ -11,6 +11,17 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-11 — GitPush and PullRequest take the repository GUID
+
+- `spec.repositoryId` on `GitPush` and `PullRequest` must be the repository's GUID; the CRD refuses
+  a name (pattern on the path parameter, carried into the generated CRD on 0.56.0 and 0.57.0).
+- Why: the regression renamed a repository that two `GitPush` CRs named. Their next get answered
+  404, they read as absent, and each re-sent its create (two `CannotCreateExternalResource` 404s).
+  It failed only because nothing held the old name; a repository that did would have received
+  the same commits again. A `PullRequest` would be opened in that other repository.
+- Breaking for a CR written with a name: set `repositoryId` to `GitRepository` `status.id`.
+  The example takes it from there (`REPO_ID`).
+
 ## 2026-11-11 — oasgen-provider 0.57.0
 
 - Pin moved from 0.56.0 to 0.57.0. The cluster upgraded in place: CRDs chart first (its
