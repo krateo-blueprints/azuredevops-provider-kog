@@ -72,7 +72,7 @@ jobs:
 
       # The publisher refuses a chart whose Chart.yaml `sources:` does not list this repository, and that
       # refusal would land after GHCR already holds the version. Check it here, before anything is pushed.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Both charts name this repository in sources
         env:
           REPO_URL: https://github.com/${{ github.repository }}
