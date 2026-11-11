@@ -1,0 +1,34 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "GroupMembership") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-groupmembership
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-groupmembership/groupmembership.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: GroupMembership
+    # The membership IS the pair of descriptors in the path, both spec fields, so get addresses it
+    # directly: 200 = member, 404 = not (measured). A membership that already exists is adopted by
+    # that get, and PUT is idempotent anyway (201 on repeat, measured). No identifiers, no findby.
+    additionalStatusFields:
+      - memberDescriptor
+      - containerDescriptor
+    # A membership has no fields to change: compare nothing from the spec beyond its identity.
+    compareScope: identifiersAndStatus
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: create
+        method: PUT
+        path: /{organization}/_apis/graph/memberships/{subjectDescriptor}/{containerDescriptor}
+      - action: get
+        method: GET
+        path: /{organization}/_apis/graph/memberships/{subjectDescriptor}/{containerDescriptor}
+      # 200, and idempotent (a second DELETE also returns 200, measured).
+      - action: delete
+        method: DELETE
+        path: /{organization}/_apis/graph/memberships/{subjectDescriptor}/{containerDescriptor}
+{{- end }}

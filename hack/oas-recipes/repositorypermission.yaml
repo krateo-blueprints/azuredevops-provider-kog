@@ -1,0 +1,291 @@
+# RepositoryPermission: one group's explicit Allow/Deny entry on a repository (or a project's
+# repositories), in the Git Repositories security namespace.
+source:
+  area: security
+  file: security.json
+  swhid: swh:1:cnt:87ebe362eee37c496703ce90f8418deb7158339f
+info:
+  title: Azure DevOps - Git repository permissions
+keep:
+  /{organization}/_apis/accesscontrolentries/{securityNamespaceId}:
+  - post
+  - delete
+  /{organization}/_apis/accesscontrollists/{securityNamespaceId}:
+  - get
+operationSecurity: accessToken
+patches:
+- op: move
+  from:
+  - paths
+  - /{organization}/_apis/accesscontrolentries/{securityNamespaceId}
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  reason: This document describes the Git Repositories security namespace only (2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87,
+    measured 2026-11-08 via _apis/securitynamespaces), so the templated namespace segment is specialised to it rather
+    than exposed as a spec field.
+- op: move
+  from:
+  - paths
+  - /{organization}/_apis/accesscontrollists/{securityNamespaceId}
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrollists/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  reason: As above, for the access control lists read.
+- op: delete
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  - post
+  - parameters
+  - 1
+  reason: 'The securityNamespaceId path parameter: the path is specialised (above).'
+- op: delete
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  - delete
+  - parameters
+  - 0
+  reason: 'The securityNamespaceId path parameter: the path is specialised (above).'
+- op: delete
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrollists/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  - get
+  - parameters
+  - 0
+  reason: 'The securityNamespaceId path parameter: the path is specialised (above).'
+- op: set
+  at:
+  - definitions
+  - RepositoryPermission
+  value:
+    description: The desired access control entry of one group on a repository (or on every repository of a project).
+    type: object
+    required:
+    - projectId
+    - subjectDescriptor
+    - permissions
+    properties:
+      projectId:
+        type: string
+        description: The project's id (GUID).
+      repositoryId:
+        type: string
+        description: 'The repository''s id (GUID). Absent: every repository of the project.'
+      subjectDescriptor:
+        type: string
+        pattern: ^vssgp\.
+        description: The group's Graph descriptor (vssgp.…), e.g. a Group's status.descriptor.
+      permissions:
+        type: object
+        description: 'Allow, Deny or NotSet per permission. Every permission defaults to NotSet, so the map is the
+          WHOLE desired entry: a bit set outside the CR on a permission the spec does not list reads as drift and
+          is cleared.'
+        properties:
+          Administer:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          GenericRead:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          GenericContribute:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          ForcePush:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          CreateBranch:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          CreateTag:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          ManageNote:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          PolicyExempt:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          CreateRepository:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          DeleteRepository:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          RenameRepository:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          EditPolicies:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          RemoveOthersLocks:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          ManagePermissions:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          PullRequestContribute:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          PullRequestBypassPolicy:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          ViewAdvSecAlerts:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          DismissAdvSecAlerts:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          ManageAdvSecScanning:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          ManageEnterpriseLiveMigrations:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+          PullRequestBypassReviewer:
+            type: string
+            enum:
+            - Allow
+            - Deny
+            - NotSet
+            default: NotSet
+  reason: 'The source types the write body as JObject (untyped). The entry is defined by a token (repoV2/<projectId>[/<repositoryId>],
+    measured), an IDENTITY descriptor and allow/deny bit masks. This schema states them in user terms: ids, a group''s
+    Graph descriptor (from which the identity descriptor is derived: measured 2026-11-08, base64-decoding the vssgp.
+    descriptor yields exactly the SID of the identity descriptor) and named permissions (bits from the namespace''s
+    measured action list). The RestDefinition''s transforms build the wire body and read it back.'
+- op: set
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  - post
+  - parameters
+  - 0
+  - schema
+  value:
+    $ref: '#/definitions/RepositoryPermission'
+  reason: Points the write body at RepositoryPermission (see its reason).
+- op: set
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  - post
+  - responses
+  value:
+    '200':
+      description: The written entries.
+      schema:
+        type: object
+        properties:
+          count:
+            type: integer
+            format: int32
+          value:
+            type: array
+            items:
+              $ref: '#/definitions/AccessControlEntry'
+  reason: Measured 2026-11-08, the write returns a {count, value} envelope of entries; the source declares a bare
+    array.
+- op: set
+  at:
+  - paths
+  - /{organization}/_apis/accesscontrollists/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+  - get
+  - responses
+  value:
+    '200':
+      description: The matching lists.
+      schema:
+        type: object
+        properties:
+          count:
+            type: integer
+            format: int32
+          value:
+            type: array
+            items:
+              $ref: '#/definitions/AccessControlList'
+  reason: Measured 2026-11-08, the read returns a {count, value} envelope; an absent entry reads as allow 0, deny
+    0.

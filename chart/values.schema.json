@@ -22,8 +22,11 @@
           "CheckTask",
           "Environment",
           "Feed",
+          "FeedPermission",
           "GitPush",
           "GitRepository",
+          "Group",
+          "GroupMembership",
           "Pipeline",
           "PipelinePermission",
           "PolicyBuildValidation",
@@ -31,6 +34,7 @@
           "PolicyStatus",
           "PullRequest",
           "Queue",
+          "RepositoryPermission",
           "Run",
           "TeamProject"
         ]

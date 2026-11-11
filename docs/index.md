@@ -18,7 +18,7 @@ It replaces two unmigrated predecessors. One is the classic, hand-written azured
 oasgen-provider 0.10 plus a proxy plugin). Every kind here is **native**: no plugin, no image,
 no proxy.
 
-> **Status: Phase 4.** Seventeen kinds are native and live-verified against Azure DevOps. The rest
+> **Status: Phase 3.** Twenty-one kinds are native and live-verified against Azure DevOps. The rest
 > are planned or wait on named oasgen-provider issues (see [overview](./overview.md)); each lands
 > in its own PR with live-test evidence.
 
@@ -29,8 +29,8 @@ no proxy.
 | **Repositories** | **`GitRepository`**, **`GitPush`**, **`PullRequest`**, **`PolicyBuildValidation`**, **`PolicyRequiredReviewers`**, **`PolicyStatus`** ✅ · one-per-branch policies (held for #517) | 1 / 2b / held |
 | **Pipelines** | **`Pipeline`**, **`PipelinePermission`**, **`Environment`**, **`Queue`**, **`CheckApproval`**, **`CheckExclusiveLock`**, **`CheckRequiredTemplate`**, **`CheckTask`**, **`Run`** ✅ | 1 / 2a / 4 |
 | **Project & config** | **`TeamProject`** ✅ · `ServiceEndpoint*`, `VariableGroup` (wait on #510), `SecureFile` (waits on #521, #510) | 2a / 2c / 4 |
-| **Artifacts** | **`Feed`** ✅ · `FeedPermission` | 2b / 3 |
-| **Identity & access** | `Team` (built, held for #486), `Group`, `User`, `GroupMembership`, `RepositoryPermission` | held / 3 |
+| **Artifacts** | **`Feed`**, **`FeedPermission`** ✅ | 2b / 3 |
+| **Identity & access** | **`Group`**, **`GroupMembership`**, **`RepositoryPermission`** ✅ · `Team` (held for #486), `User` (held for #529) | 3 / held |
 
 The classic provider's `ConnectorConfig` has no equivalent. Each kind gets its own generated
 `<Kind>Configuration` (basic auth with a PAT, plus `api-version`) instead.

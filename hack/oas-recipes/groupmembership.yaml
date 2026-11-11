@@ -1,0 +1,25 @@
+# GroupMembership: one subject (user or group) as a member of one group, addressed by both
+# descriptors. Served from vssps.dev.azure.com.
+source:
+  area: graph
+  file: graph.json
+  swhid: swh:1:cnt:5efa63f83c417d8abd9fda3d027da3ccf48b364d
+info:
+  title: Azure DevOps - Graph group memberships
+keep:
+  '/{organization}/_apis/graph/memberships/{subjectDescriptor}/{containerDescriptor}': [put, get, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [paths, '/{organization}/_apis/graph/memberships/{subjectDescriptor}/{containerDescriptor}', put, responses]
+    value: {'201': {description: The membership exists (created or already present)., schema: {$ref: '#/definitions/GraphMembership'}}}
+    reason: >-
+      Measured 2026-11-08: PUT returns 201 Created, also when the membership already exists
+      (idempotent); the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/_apis/graph/memberships/{subjectDescriptor}/{containerDescriptor}', get, responses]
+    value:
+      '200': {description: The membership exists., schema: {$ref: '#/definitions/GraphMembership'}}
+      '404': {description: The subject is not a member of the container.}
+    reason: Measured 2026-11-08, GET returns 404 when the subject is not a member; the source declares 200 only.

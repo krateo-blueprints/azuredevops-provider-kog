@@ -67,6 +67,9 @@ the same name and all pointing at one Secret, with the right `api-version` for e
 | `PullRequest`, `Feed` | findby, create, get, update, delete | `7.1` |
 | `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus` | create, get, update, delete | `7.1` |
 | `Run` | create, get | `7.1` |
+| `Group` | findby, create, get, update, delete | `7.1-preview.1` |
+| `GroupMembership` | create, get, delete | `7.1-preview.1` |
+| `RepositoryPermission`, `FeedPermission` | create, get, update, delete | `7.1` |
 
 CI renders this chart and validates every object against the Configuration CRDs that oasgen
 actually generates (`hack/render-check.py`). A missing verb, which would send no `api-version`,

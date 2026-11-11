@@ -73,7 +73,8 @@ addresses the project.
 | 2c | `ServiceEndpoint*` (per auth scheme), `VariableGroup` | Credentials come from Secrets: wait on oasgen-provider#510 |
 | held | `Team` | Built and verified; held until offset pagination exists (oasgen-provider#486) |
 | held | `PolicyMinimumReviewers`, `PolicyWorkItemLinking`, `PolicyCommentRequirements`, `PolicyMergeStrategy` | Lifecycle verified; held because they cannot adopt (identity is in `settings.scope[0]`, oasgen-provider#517, #519) |
-| 3 | `Group`, `User`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | Permission deletes wait on oasgen-provider #490 |
+| 3 | `Group`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | ✅ verified live 2026-11-08 on 0.55.0 |
+| held | `User` | Built and verified for valid principals; held until a failed add (HTTP 200, `isSuccess: false`) can surface (oasgen-provider#529) |
 | 4 | `Run` | ✅ verified live 2026-11-08 on 0.54.1 |
 | 4 (waits) | `SecureFile` | The upload body is the raw file bytes, from a Secret: waits on oasgen-provider#521 and #510 |
 | 5 | Migration guides, deprecation of the predecessors, first release | — |
@@ -100,6 +101,10 @@ by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 | `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus` | get by `status.id` only (**no findby**) | PUT (full body) | DELETE (soft: `isDeleted`) | Any number per branch, even identical (measured), so they never adopt. `type` defaulted; `scope[].repositoryId` is the repository GUID. `validDuration` must be 0 unless `queueOnSourceUpdateOnly` is true. |
 | `Feed` | findby `name`, then get by `status.id` | PATCH (rename, description, flags) | soft delete (feed recycle bin) | Served from `feeds.dev.azure.com`. **A deleted feed's name stays reserved** (409 on re-create, measured still reserved 10 minutes after purging), so a CR re-created with the same name waits on Azure DevOps. |
 | `Run` | get by `status.id` only (**no findby**) | none (a run is immutable) | **none**: deleting the CR releases it and keeps the run | Every POST starts a new run (measured), so it never adopts, and a lost create response re-triggers (oasgen-provider#503). Ready means the run exists; read `status.state`/`status.result`. Cancel can't be a delete (the run stays readable) and DELETE refuses a running run (403). |
+| `Group` | findby `displayName` in `scopeDescriptor`, then get by `status.descriptor` | PATCH (RFC 6902 JSON Patch built by a transform; `replace` only) | DELETE (tombstone: GET keeps 200 with `isDeleted`) | Served from `vssps.dev.azure.com`. A create with an existing name returns that group, so it never duplicates. `scopeDescriptor` is a project's descriptor (`scp.…`; by name waits on oasgen-provider#508). Graph reads are eventually consistent; every write the kind makes is idempotent. |
+| `GroupMembership` | get by the two descriptors (spec) | none | DELETE (idempotent) | A membership that already exists is adopted by the first get. Subject: a Group's or a user's Graph descriptor. |
+| `RepositoryPermission` | get by token + identity descriptor, both **derived** from the spec | POST (replace) | DELETE (idempotent) | A group's entry in the Git security namespace. `permissions` maps the 21 actions to `Allow`/`Deny`/`NotSet`, defaulting to `NotSet`, so a bit set outside the CR is drift. The derivation refuses a missing or malformed component (an error condition, not a wrong request). Users as subjects wait on #508. |
+| `FeedPermission` | get by the derived identity descriptor | PATCH (role) | PATCH role `none` | A group's role on a feed. A repeated `none` answers 500 (not idempotent); a stale read can provoke it, and the controller retries until the read converges. |
 
 ### GitPush: recovering a lost create response
 
@@ -132,3 +137,5 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#518 | A business-rule 403 (e.g. a duplicate policy) is logged as an authorisation denial and the verb is suppressed. |
 | oasgen-provider#483 | "identifiers are absent from the items the findby response carries" is a false positive when the fields are inherited through `allOf` (Check, Pipeline, Feed kinds adopt live). |
 | oasgen-provider#521 | A verb cannot send a raw (non-JSON) body sourced from a Secret: `SecureFile` waits (Azure DevOps stores the request bytes verbatim, so a JSON body would silently become the file). |
+| oasgen-provider#529 | A failed write reported as HTTP 200 with the failure in the body is treated as success: `User` is held. |
+| oasgen-provider#528 | Request mappings whose CR path does not resolve are skipped silently; the permission kinds' jq refuses on a missing component instead of composing a wrong token. |

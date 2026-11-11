@@ -1,0 +1,55 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "RepositoryPermission") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-repositorypermission
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-repositorypermission/repositorypermission.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: RepositoryPermission
+    # The entry IS the (token, identity) pair, both derived from spec fields, so get addresses it
+    # directly and an existing entry is adopted on the first observe. No identifiers, no findby.
+    # Read options of the list read, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - includeExtendedInfo
+      - recurse
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      # create and update both REPLACE the entry (merge false). Every permission defaults to NotSet, so
+      # the map is the whole desired state and the read reports all of them: a bit set outside the CR is
+      # drift (measured: without the default an extra bit on an unlisted permission went unnoticed).
+      - action: create
+        method: POST
+        path: /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+        requestTransform: &write
+          inline: 'def tok: if ((.projectId | type) != "string") or .projectId == "" then error("spec.projectId is required to build the security token") elif (.repositoryId != null) and (((.repositoryId | type) != "string") or .repositoryId == "") then error("spec.repositoryId, when set, must be a non-empty id") else "repoV2/" + .projectId + (if .repositoryId then "/" + .repositoryId else "" end) end; def idd: (.subjectDescriptor | if (type != "string") or (startswith("vssgp.") | not) then error("subjectDescriptor must be a group''s Graph descriptor (vssgp.…), e.g. a Group''s status.descriptor") else (ltrimstr("vssgp.") | @base64d) as $sid | if ($sid | test("^S-1-9-[0-9]+(-[0-9]+)*$")) | not then error("subjectDescriptor does not decode to a group SID") else "Microsoft.TeamFoundation.Identity;" + $sid end end); [{"n":"Administer","b":1},{"n":"GenericRead","b":2},{"n":"GenericContribute","b":4},{"n":"ForcePush","b":8},{"n":"CreateBranch","b":16},{"n":"CreateTag","b":32},{"n":"ManageNote","b":64},{"n":"PolicyExempt","b":128},{"n":"CreateRepository","b":256},{"n":"DeleteRepository","b":512},{"n":"RenameRepository","b":1024},{"n":"EditPolicies","b":2048},{"n":"RemoveOthersLocks","b":4096},{"n":"ManagePermissions","b":8192},{"n":"PullRequestContribute","b":16384},{"n":"PullRequestBypassPolicy","b":32768},{"n":"ViewAdvSecAlerts","b":65536},{"n":"DismissAdvSecAlerts","b":131072},{"n":"ManageAdvSecScanning","b":262144},{"n":"ManageEnterpriseLiveMigrations","b":524288},{"n":"PullRequestBypassReviewer","b":1048576}] as $T | (.permissions // {}) as $p | {token: tok, merge: false, accessControlEntries: [{descriptor: idd, allow: ([$T[] | select($p[.n] == "Allow") | .b] | add // 0), deny: ([$T[] | select($p[.n] == "Deny") | .b] | add // 0)}]}'
+      - action: get
+        method: GET
+        path: /{organization}/_apis/accesscontrollists/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+        fieldMapping: &address
+          # token = repoV2/<projectId>[/<repositoryId>] and the identity descriptor, both derived by jq
+          # that REFUSES on a missing or malformed component instead of composing a wrong value.
+          - inQuery: token
+            inCustomResource: spec
+            valueMapping: {type: jq, jq: {inline: 'if ((.projectId | type) != "string") or .projectId == "" then error("spec.projectId is required to build the security token") elif (.repositoryId != null) and (((.repositoryId | type) != "string") or .repositoryId == "") then error("spec.repositoryId, when set, must be a non-empty id") else "repoV2/" + .projectId + (if .repositoryId then "/" + .repositoryId else "" end) end'}}
+          - inQuery: descriptors
+            inCustomResource: spec.subjectDescriptor
+            valueMapping: {type: jq, jq: {inline: 'if (type != "string") or (startswith("vssgp.") | not) then error("subjectDescriptor must be a group''s Graph descriptor (vssgp.…), e.g. a Group''s status.descriptor") else (ltrimstr("vssgp.") | @base64d) as $sid | if ($sid | test("^S-1-9-[0-9]+(-[0-9]+)*$")) | not then error("subjectDescriptor does not decode to a group SID") else "Microsoft.TeamFoundation.Identity;" + $sid end end'}}
+        # An absent entry reads as allow 0 / deny 0 (measured): no bit set is absence.
+        notFoundBody: {inline: '([.value[]?.acesDictionary[]? | .allow + .deny] | add // 0) == 0'}
+        responseTransform: {inline: '[{"n":"Administer","b":1},{"n":"GenericRead","b":2},{"n":"GenericContribute","b":4},{"n":"ForcePush","b":8},{"n":"CreateBranch","b":16},{"n":"CreateTag","b":32},{"n":"ManageNote","b":64},{"n":"PolicyExempt","b":128},{"n":"CreateRepository","b":256},{"n":"DeleteRepository","b":512},{"n":"RenameRepository","b":1024},{"n":"EditPolicies","b":2048},{"n":"RemoveOthersLocks","b":4096},{"n":"ManagePermissions","b":8192},{"n":"PullRequestContribute","b":16384},{"n":"PullRequestBypassPolicy","b":32768},{"n":"ViewAdvSecAlerts","b":65536},{"n":"DismissAdvSecAlerts","b":131072},{"n":"ManageAdvSecScanning","b":262144},{"n":"ManageEnterpriseLiveMigrations","b":524288},{"n":"PullRequestBypassReviewer","b":1048576}] as $T | ([.value[]?.acesDictionary[]?] | first // {allow: 0, deny: 0}) as $a | {permissions: ([$T[] | {(.n): (if ((($a.allow / .b) | floor) % 2) == 1 then "Allow" elif ((($a.deny / .b) | floor) % 2) == 1 then "Deny" else "NotSet" end)}] | add)}'}
+      - action: update
+        method: POST
+        path: /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+        requestTransform: *write
+      # Removes the entry (200 true; a repeat is 200 false: idempotent, measured).
+      - action: delete
+        method: DELETE
+        path: /{organization}/_apis/accesscontrolentries/2e9eb7ed-3c0a-47d4-87c1-0ffdd275fd87
+        fieldMapping: *address
+{{- end }}

@@ -11,6 +11,23 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-09 — Phase 3
+
+- Four more native kinds, live-verified on oasgen-provider 0.55.0: `Group` and `GroupMembership`
+  (Graph, `vssps.dev.azure.com`), `RepositoryPermission` (Git security namespace) and
+  `FeedPermission`.
+- Permissions take user terms: ids, a Group's Graph descriptor and named permissions or a role. The
+  security token and the identity descriptor are derived by request jq (measured: the identity
+  descriptor is the base64-decoded `vssgp.` descriptor), and the jq refuses a missing or malformed
+  component. Every permission defaults to `NotSet`, so a bit set outside the CR is corrected.
+- Measured and recorded: group create returns the existing same-named group, update is JSON Patch
+  `replace` only (an empty patch is a 500), delete leaves a readable tombstone; Graph reads are
+  eventually consistent; a second feed-permission removal answers 500.
+- Held: `User` (built, verified for valid principals): a failed add is HTTP 200 with
+  `isSuccess: false`, which oasgen cannot surface yet (oasgen-provider#529, filed).
+- `trim-oas`: an unkept HEAD operation no longer leaks into an asset, and a `move` patch op
+  specialises templated path segments.
+
 ## 2026-11-08 — oasgen-provider 0.55.0
 
 - Pin moved from 0.54.1 to 0.55.0 after a live check: the cluster upgraded in place (CRDs chart,

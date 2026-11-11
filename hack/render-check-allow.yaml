@@ -5,3 +5,5 @@ GitRepository:
   sourceRef: "Create-time input for a fork: which source refs to copy into the new repository."
 Queue:
   authorizePipelines: "Create-time input: authorize every pipeline in the project to use the new queue."
+Group:
+  scopeDescriptor: "Create-time input: the scope (a project's descriptor) the group is created in; also the findby filter. Absent means an organisation-level group."
