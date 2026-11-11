@@ -53,7 +53,12 @@ jobs:
       - name: Render both charts
         run: |
           cp -R chart config-chart /tmp/
-          sed -i 's/^version: CHART_VERSION$/version: 0.0.0-ci/' /tmp/chart/Chart.yaml /tmp/config-chart/Chart.yaml
+          # Both fields must carry the placeholder, so a release stamps both from the tag.
+          for f in chart/Chart.yaml config-chart/Chart.yaml; do
+            grep -qx 'version: CHART_VERSION' "$f" && grep -qx 'appVersion: "CHART_VERSION"' "$f" \
+              || { echo "::error::$f must declare version: CHART_VERSION and appVersion: \"CHART_VERSION\""; exit 1; }
+          done
+          sed -i 's/CHART_VERSION/0.0.0-ci/g' /tmp/chart/Chart.yaml /tmp/config-chart/Chart.yaml
           helm lint /tmp/chart /tmp/config-chart
           helm template ado /tmp/chart -n krateo-system > /tmp/render.yaml
           helm template cfg /tmp/config-chart -n krateo-system > /tmp/render-config.yaml

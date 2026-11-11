@@ -5,9 +5,9 @@ description: >-
   that holds an Azure DevOps PAT. A separate chart because these CRDs exist only after
   oasgen-provider has processed the azuredevops-provider-kog RestDefinitions. Holds no credential.
 type: application
-# release-oci substitutes CHART_VERSION from the pushed semver tag.
+# release-oci substitutes every CHART_VERSION from the pushed semver tag (version and appVersion).
 version: CHART_VERSION
-appVersion: "0.0.1"
+appVersion: "CHART_VERSION"
 keywords: [krateo, kog, azure-devops]
 home: https://github.com/krateo-blueprints/azuredevops-provider-kog
 sources:
