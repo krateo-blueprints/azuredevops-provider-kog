@@ -1,0 +1,11 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "PolicyBuildValidation") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-policybuildvalidation
+  namespace: {{ .Release.Namespace }}
+data:
+  # GENERATED from hack/oas-recipes/policybuildvalidation.yaml by hack/trim-oas.py; copied verbatim (no tpl pass).
+  policybuildvalidation.yaml: |
+{{ .Files.Get "assets/policybuildvalidation.yaml" | indent 4 }}
+{{- end }}

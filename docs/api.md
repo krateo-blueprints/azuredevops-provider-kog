@@ -37,6 +37,11 @@ Write CRs against that version, not `v1alpha1`.
 | `CheckExclusiveLock` | `azuredevops.krateo.io/v7-1-preview` | `organization`, `project`, `type` (defaulted), `resource {type, id}`, `timeout` | `id`, `version`, `type`, `resource` |
 | `CheckRequiredTemplate` | `azuredevops.krateo.io/v7-1-preview` | as above, plus `settings.extendsChecks[] {repositoryType, repositoryName, repositoryRef, templatePath}` | `id`, `version`, `type`, `resource` |
 | `CheckTask` | `azuredevops.krateo.io/v7-1-preview` | as above, plus `settings {definitionRef {id, name, version}, displayName, inputs, retryInterval, linkedVariableGroup}` | `id`, `version` |
+| `PullRequest` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `repositoryId` (name or id), `sourceRefName`, `targetRefName`, `title`, `description`, `isDraft` | `pullRequestId`, `status`, `url`, `creationDate` |
+| `PolicyBuildValidation` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `isEnabled`, `isBlocking`, `type` (defaulted), `settings {buildDefinitionId, displayName, queueOnSourceUpdateOnly, manualQueueOnly, validDuration, filenamePatterns[], scope[] {repositoryId, refName, matchKind}}` | `id`, `revision` |
+| `PolicyRequiredReviewers` | `azuredevops.krateo.io/v7-1` | as above, with `settings {requiredReviewerIds[], minimumApproverCount, creatorVoteCounts, message, filenamePatterns[], scope[]}` | `id`, `revision` |
+| `PolicyStatus` | `azuredevops.krateo.io/v7-1` | as above, with `settings {statusName, statusGenre, invalidateOnSourceUpdate, authorId, defaultDisplayName, policyApplicability, filenamePatterns[], scope[]}` | `id`, `revision` |
+| `Feed` | `azuredevops.krateo.io/v7-1` | `organization`, `project`, `name`, `description`, `badgesEnabled`, `hideDeletedPackageVersions` | `id`, `url` |
 
 Every kind also has `spec.configurationRef` (`{name, namespace}`) and the standard conditions.
 `status` fields are append-only once generated.

@@ -1,0 +1,70 @@
+# Feed: a project-scoped Azure Artifacts feed (served from feeds.dev.azure.com). Deleting it moves it
+# to the feed recycle bin; the name stays reserved afterwards (see the recipe reasons).
+source:
+  area: artifacts
+  file: feed.json
+  swhid: swh:1:cnt:587fdba5ff1ac37bce807fec9c79d36708d1e300
+info:
+  title: Azure DevOps - Artifacts feeds
+keep:
+  '/{organization}/{project}/_apis/packaging/feeds': [get, post]
+  '/{organization}/{project}/_apis/packaging/feeds/{feedId}': [get, patch, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, FeedCreate]
+    value:
+      description: The request fields of a feed create.
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+        description: {type: string}
+        badgesEnabled: {type: boolean, description: Package badges.}
+        hideDeletedPackageVersions: {type: boolean}
+    reason: >-
+      The source types the create body as the full Feed (permissions, views, deletion dates, project,
+      fully-qualified ids...), most of which the server assigns. A feed is created from a name and
+      optional description and flags (Microsoft Learn, Feed Management - Create Feed, 7.1). Upstream
+      sources, views and permissions are separate concerns and out of this kind. Measured 2026-11-08:
+      a second feed with the same name is refused with 409, and a feed created through the API has no
+      upstream sources.
+  - op: set
+    at: [definitions, FeedUpdate]
+    value:
+      description: The fields a feed update accepts here.
+      type: object
+      properties:
+        name: {type: string}
+        description: {type: string}
+        badgesEnabled: {type: boolean}
+        hideDeletedPackageVersions: {type: boolean}
+    reason: >-
+      Narrowed to the fields FeedCreate carries, so an update can only change what the spec declares
+      (the source also allows upstream sources, views and allowUpstreamNameConflict). PATCH renames and
+      changes the description and flags (measured 2026-11-08).
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/packaging/feeds', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/FeedCreate'}
+    reason: Points the create body at FeedCreate.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/packaging/feeds', post, responses]
+    value: {'201': {description: The feed was created., schema: {$ref: '#/definitions/Feed'}}}
+    reason: Measured 2026-11-08, create returns 201 Created; the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/packaging/feeds', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/Feed'}}
+    reason: Measured 2026-11-08, the list returns a {count, value} envelope.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/packaging/feeds/{feedId}', delete, responses]
+    value: {'204': {description: The feed was moved to the recycle bin.}}
+    reason: >-
+      Measured 2026-11-08, delete returns 204 No Content (the source declares 200), GET then returns
+      404, and the feed sits in the feed recycle bin. Its name stays reserved: re-creating it returns
+      409 ("currently reserved because a feed with that name was either recently renamed or is in the
+      recycle bin"), and still did 10 minutes after the recycle-bin entry was permanently deleted.

@@ -1,0 +1,146 @@
+# PolicyBuildValidation: the "Build" branch policy. Any number per branch.
+source:
+  area: policy
+  file: policy.json
+  swhid: swh:1:cnt:a7889097775296f2cfc948227c0e242877c50f1d
+info:
+  title: Azure DevOps - Build branch policies
+keep:
+  /{organization}/{project}/_apis/policy/configurations:
+  - post
+  /{organization}/{project}/_apis/policy/configurations/{configurationId}:
+  - get
+  - put
+  - delete
+operationSecurity: accessToken
+patches:
+- op: set
+  at:
+  - definitions
+  - PolicyBuildValidationSettings
+  value:
+    type: object
+    required:
+    - scope
+    - buildDefinitionId
+    properties:
+      buildDefinitionId:
+        type: integer
+        format: int32
+        description: Id of the pipeline (build definition) to run.
+      displayName: &id002
+        type: string
+      queueOnSourceUpdateOnly: &id001
+        type: boolean
+      manualQueueOnly: *id001
+      validDuration:
+        type: number
+        description: Minutes a successful build stays valid; 0 = never expires. Must be 0 unless queueOnSourceUpdateOnly
+          is true (Azure DevOps refuses it with 400 otherwise, measured 2026-11-08).
+      filenamePatterns:
+        type: array
+        items: *id002
+        description: Paths the policy applies to (e.g. /src/*, !/docs/*); all paths when absent.
+      scope:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required:
+          - repositoryId
+          - refName
+          - matchKind
+          properties:
+            repositoryId:
+              type: string
+              description: Repository id (GUID).
+            refName:
+              type: string
+              description: e.g. refs/heads/main, or refs/heads/release/ with matchKind Prefix.
+            matchKind:
+              type: string
+              enum:
+              - Exact
+              - Prefix
+              - DefaultBranch
+  reason: The Build settings as measured 2026-11-08 (unset strings come back null); shared by the request and the
+    response.
+- op: set
+  at:
+  - definitions
+  - PolicyConfiguration
+  - properties
+  - settings
+  value: &id003
+    $ref: '#/definitions/PolicyBuildValidationSettings'
+  reason: The source types settings as a free-form object; this document describes Build policies only, whose settings
+    are returned exactly as sent plus server defaults (measured), so the response is typed the same way.
+- op: set
+  at:
+  - definitions
+  - PolicyBuildValidation
+  value:
+    description: The request fields of a Build branch policy.
+    type: object
+    required:
+    - type
+    - settings
+    properties:
+      isEnabled:
+        type: boolean
+        default: true
+      isBlocking:
+        type: boolean
+        default: true
+        description: Required (blocking) or optional.
+      type:
+        type: object
+        description: Always the Build policy type (defaulted).
+        default:
+          id: 0609b952-1397-4640-95ec-e00a01b2c241
+        required:
+        - id
+        properties:
+          id:
+            type: string
+            enum:
+            - 0609b952-1397-4640-95ec-e00a01b2c241
+      settings: *id003
+  reason: The source types policy settings as a free-form object; a branch policy is defined by its type-specific
+    settings (Microsoft Learn, Policy Configurations - Create, 7.1, and the Build type). This kind fixes the type
+    to Build (defaulted) and types its settings as measured 2026-11-08 (unset strings come back null). Several policies
+    of this type may guard the same branch, even with identical settings (measured 2026-11-08). Scope matchKind
+    is stored and returned capitalised (sent 'exact', read 'Exact'), so the enum uses the stored casing.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/policy/configurations
+  - post
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/PolicyBuildValidation'
+  reason: Points the create body at PolicyBuildValidation.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/policy/configurations/{configurationId}
+  - put
+  - parameters
+  - 1
+  - schema
+  value:
+    $ref: '#/definitions/PolicyBuildValidation'
+  reason: Measured 2026-11-08, PUT replaces the policy with the full create-shaped body (no id or revision needed;
+    revision increments). Points it at PolicyBuildValidation.
+- op: set
+  at:
+  - paths
+  - /{organization}/{project}/_apis/policy/configurations/{configurationId}
+  - delete
+  - responses
+  value:
+    '204':
+      description: The policy was deleted.
+  reason: Measured 2026-11-08, delete returns 204 No Content; the source declares 200.

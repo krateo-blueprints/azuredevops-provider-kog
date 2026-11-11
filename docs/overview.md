@@ -69,9 +69,10 @@ addresses the project.
 | 0 | Repo scaffold, docs, generic CI | ✅ |
 | 1 | `GitRepository`, `GitPush`, `Pipeline`, `PipelinePermission`, plus an `oasgen-render` CI gate, the config chart and kind-specific checks | ✅ verified live 2026-11-07 (PipelinePermission without delete) |
 | 2a | `TeamProject` (async), `Environment`, `Queue`, `CheckApproval`, `CheckExclusiveLock`, `CheckRequiredTemplate`, `CheckTask` | ✅ verified live 2026-11-07 on 0.54.1 |
-| 2b | `PullRequest`, `Policy`, `Feed` | Full lifecycle live per kind |
+| 2b | `PullRequest`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus`, `Feed` | ✅ verified live 2026-11-08 on 0.54.1 |
 | 2c | `ServiceEndpoint*` (per auth scheme), `VariableGroup` | Credentials come from Secrets: wait on oasgen-provider#510 |
 | held | `Team` | Built and verified; held until offset pagination exists (oasgen-provider#486) |
+| held | `PolicyMinimumReviewers`, `PolicyWorkItemLinking`, `PolicyCommentRequirements`, `PolicyMergeStrategy` | Lifecycle verified; held because they cannot adopt (identity is in `settings.scope[0]`, oasgen-provider#517, #519) |
 | 3 | `Group`, `User`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | Permission deletes wait on oasgen-provider #490 |
 | 4 | `Run`, `SecureFile` (observe and delete only) | Full lifecycle live per kind |
 | 5 | Migration guides, deprecation of the predecessors, first release | — |
@@ -94,6 +95,9 @@ by `findby`, all against a dedicated throwaway Azure DevOps organisation.
 | `CheckExclusiveLock` | as `CheckApproval` | PATCH | DELETE | One per resource; no settings. |
 | `CheckRequiredTemplate` | as `CheckApproval` | PATCH | DELETE | One per resource; `settings.extendsChecks[]`. |
 | `CheckTask` | get by `status.id` only (**no findby**) | PATCH | DELETE | Any number per resource, even with equal names (measured), so it never adopts; a lost create response needs manual recovery (oasgen-provider#503). |
+| `PullRequest` | findby `sourceRefName`+`targetRefName` (AND, active PRs, filtered server-side), then get by `status.pullRequestId` | PATCH (title, description, draft) | **abandon** (PATCH `status: abandoned`) | One active PR per branch pair (measured). An abandoned PR counts as absent, so a PR abandoned in the UI is re-opened by its CR; a completed PR stays present. |
+| `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus` | get by `status.id` only (**no findby**) | PUT (full body) | DELETE (soft: `isDeleted`) | Any number per branch, even identical (measured), so they never adopt. `type` defaulted; `scope[].repositoryId` is the repository GUID. `validDuration` must be 0 unless `queueOnSourceUpdateOnly` is true. |
+| `Feed` | findby `name`, then get by `status.id` | PATCH (rename, description, flags) | soft delete (feed recycle bin) | Served from `feeds.dev.azure.com`. **A deleted feed's name stays reserved** (409 on re-create, measured still reserved 10 minutes after purging), so a CR re-created with the same name waits on Azure DevOps. |
 
 ### GitPush: recovering a lost create response
 
@@ -121,3 +125,7 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#508 | Dependent lookups cannot send `api-version`: `Queue` needs `spec.pool.id`; Phase 3 identity lookups wait. |
 | oasgen-provider#510 | Every `secretRef` resource fails on 0.53.0+: the service-connection kinds and secret variables wait. |
 | oasgen-provider#486 | No offset pagination (Azure DevOps also needs a short-page signal and cross-page consistency, measured): `Team` is held. |
+| oasgen-provider#514 | A bracket-escaped `inQuery` (`'["searchCriteria.sourceRefName"]'`) is not recognised as supplying its parameter at generation: `PullRequest` also excludes the escaped names (runtime binding verified on the wire). |
+| oasgen-provider#517, #519 | Identifiers that index into an array (`settings.scope.0.*`) never match at runtime, and generate an object-keyed status: the one-per-branch policy kinds are held. |
+| oasgen-provider#518 | A business-rule 403 (e.g. a duplicate policy) is logged as an authorisation denial and the verb is suppressed. |
+| oasgen-provider#483 | "identifiers are absent from the items the findby response carries" is a false positive when the fields are inherited through `allOf` (Check, Pipeline, Feed kinds adopt live). |

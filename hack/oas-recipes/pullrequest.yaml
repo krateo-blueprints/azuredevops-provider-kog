@@ -1,0 +1,64 @@
+# PullRequest: a pull request between two branches of a repository. Azure DevOps cannot delete a pull
+# request; deleting the CR abandons it.
+source:
+  area: git
+  file: git.json
+  swhid: swh:1:cnt:2daed662633fc64a0bfd0e7389485f0dab55f305
+info:
+  title: Azure DevOps - Pull Requests
+keep:
+  '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests': [get, post]
+  '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}': [get, patch]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, PullRequestCreate]
+    value:
+      description: The request fields of a pull request create.
+      type: object
+      required: [sourceRefName, targetRefName, title]
+      properties:
+        sourceRefName: {type: string, description: 'e.g. refs/heads/feature.'}
+        targetRefName: {type: string, description: 'e.g. refs/heads/main.'}
+        title: {type: string}
+        description: {type: string}
+        isDraft: {type: boolean}
+    reason: >-
+      The source types the create body as the full GitPullRequest (commits, merge state,
+      reviewers, closedBy, mergeId...). A pull request is created from a source branch, a target
+      branch, a title and an optional description and draft flag (Microsoft Learn, Pull Requests -
+      Create, 7.1). Reviewers, work items and labels are separate APIs and out of this kind.
+  - op: set
+    at: [definitions, PullRequestUpdate]
+    value:
+      description: The fields a pull request update accepts here.
+      type: object
+      properties:
+        title: {type: string}
+        description: {type: string}
+        isDraft: {type: boolean}
+        status: {type: string, enum: [active, abandoned], description: Used by delete (abandon); not a spec field.}
+    reason: >-
+      PATCH changes title, description, draft flag and status; the branches are fixed at creation.
+      Measured 2026-11-07: PATCH {status: abandoned} abandons the pull request (there is no delete).
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/PullRequestCreate'}
+    reason: Points the create body at PullRequestCreate.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}', patch, parameters, 1, schema]
+    value: {$ref: '#/definitions/PullRequestUpdate'}
+    reason: Points the update body at PullRequestUpdate.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests', post, responses]
+    value: {'201': {description: The pull request was created., schema: {$ref: '#/definitions/GitPullRequest'}}}
+    reason: Measured 2026-11-07, create returns 201 Created; the source declares 200.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/GitPullRequest'}}
+    reason: Measured 2026-11-07, the list returns a {count, value} envelope.
