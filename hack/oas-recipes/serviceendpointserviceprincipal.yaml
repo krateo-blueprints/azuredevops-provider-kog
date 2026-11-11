@@ -1,0 +1,119 @@
+# ServiceEndpointServicePrincipal: an Azure Resource Manager service connection authenticated with a service principal key (scheme ServicePrincipal).
+# The service principal key (client secret) comes from a Kubernetes Secret, never from the CR.
+source:
+  area: serviceEndpoint
+  file: serviceEndpoint.json
+  swhid: swh:1:cnt:c25115e4c21b18aa7c2720c7d3b30e88d852a75f
+info:
+  title: Azure DevOps - Service Connections (ServicePrincipal)
+keep:
+  '/{organization}/_apis/serviceendpoint/endpoints': [post]
+  '/{organization}/{project}/_apis/serviceendpoint/endpoints': [get]
+  '/{organization}/{project}/_apis/serviceendpoint/endpoints/{endpointId}': [get]
+  '/{organization}/_apis/serviceendpoint/endpoints/{endpointId}': [put, delete]
+# HYGIENE (inert for oasgen-provider generation): see hack/trim-oas.py step 0.
+operationSecurity: accessToken
+patches:
+  - op: set
+    at: [definitions, ServiceEndpointServicePrincipal]
+    value:
+      description: The request fields of a ServicePrincipal service connection.
+      type: object
+      required: [name, type, url, authorization, serviceEndpointProjectReferences]
+      properties:
+        name: {type: string}
+        type: {type: string, description: 'Connection type, e.g. azurerm.'}
+        url: {type: string}
+        isShared: {type: boolean}
+        data:
+          type: object
+          description: 'Type-specific settings. azurerm: subscriptionId, subscriptionName, environment (AzureCloud), scopeLevel (Subscription), creationMode (Manual).'
+          additionalProperties: {type: string}
+        authorization:
+          type: object
+          required: [scheme, parameters]
+          properties:
+            scheme: {type: string, enum: [ServicePrincipal]}
+            parameters:
+              type: object
+              required: [tenantid, serviceprincipalid, authenticationType, serviceprincipalkeySecretRef]
+              properties:
+                tenantid: {type: string, description: Microsoft Entra tenant id.}
+                serviceprincipalid: {type: string, description: Application (client) id of the service principal.}
+                authenticationType: {type: string, enum: [spnKey], description: spnKey is a client secret. Certificate (spnCertificate) and workload identity federation authentication are not covered by this kind.}
+                serviceprincipalkey:
+                  type: string
+                  description: Set by rest-dynamic-controller from serviceprincipalkeySecretRef. Excluded from the CR spec.
+                serviceprincipalkeySecretRef:
+                  type: object
+                  description: >-
+                    NOT a vendor field. The Kubernetes Secret (same namespace) and key holding the service principal key (client secret).
+                    Consumed by rest-dynamic-controller's secretRef resolver and never transmitted.
+                  required: [name, key]
+                  properties:
+                    name: {type: string}
+                    key: {type: string}
+        serviceEndpointProjectReferences:
+          type: array
+          items:
+            type: object
+            required: [name, projectReference]
+            properties:
+              name: {type: string, description: The connection's name in that project.}
+              description: {type: string, description: "The connection's description in that project (what GET returns as `description`)."}
+              projectReference:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: string, description: 'Project id (GUID). A project name is rejected: 400 "scopeId must not be Guid.Empty".'}
+    reason: >-
+      The source types the body as the full ServiceEndpoint, with `authorization.parameters` as an
+      untyped string map and server-managed fields (id, isReady, createdBy, operationStatus, groups).
+      This kind fixes the scheme to ServicePrincipal and names its parameters (measured 2026-11-09
+      from the GET _apis/serviceendpoint/types catalog). Measured 2026-11-07:
+      a project reference needs the project id (a name returns 400); the top-level `description` of a
+      project-scoped connection mirrors its project reference's description (a top-level description
+      alone is not kept), so description lives on the reference. `serviceprincipalkeySecretRef` is NOT a vendor
+      field: it is the CR-side source of rest-dynamic-controller's secretRef resolver, which writes
+      `serviceprincipalkey` and strips `serviceprincipalkeySecretRef` before sending (builder.go stripResolverSources).
+  - op: set
+    at: [definitions, ServiceEndpointServicePrincipalUpdate]
+    value:
+      description: The update body is the connection plus the id it replaces.
+      type: object
+      allOf: [{$ref: '#/definitions/ServiceEndpointServicePrincipal'}]
+      required: [id]
+      properties:
+        id: {type: string}
+    reason: Measured 2026-11-07, PUT with the id in the body applies url and description changes and echoes them.
+  - op: set
+    at: [paths, '/{organization}/_apis/serviceendpoint/endpoints', post, parameters, 1, schema]
+    value: {$ref: '#/definitions/ServiceEndpointServicePrincipal'}
+    reason: Points the create body at the UsernamePassword request schema.
+  - op: set
+    at: [paths, '/{organization}/_apis/serviceendpoint/endpoints/{endpointId}', put, parameters, 1, schema]
+    value: {$ref: '#/definitions/ServiceEndpointServicePrincipalUpdate'}
+    reason: Points the update body at the UsernamePassword update schema.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/serviceendpoint/endpoints', get, parameters]
+    value:
+      - {in: path, name: organization, description: The name of the Azure DevOps organization., required: true, type: string}
+      - {in: path, name: project, description: Project ID or project name, required: true, type: string}
+      - {in: query, name: endpointNames, description: Names of the service endpoints., required: false, type: string}
+      - {$ref: '#/parameters/api-Version'}
+    reason: >-
+      The source keeps the "Get Service Endpoints By Names" overload, whose endpointNames is
+      required. Measured 2026-11-07: the list without endpointNames returns the project's
+      connections, and ?endpointNames= filters by name.
+  - op: set
+    at: [paths, '/{organization}/{project}/_apis/serviceendpoint/endpoints', get, responses, '200', schema]
+    value:
+      type: object
+      properties:
+        count: {type: integer, format: int32}
+        value: {type: array, items: {$ref: '#/definitions/ServiceEndpoint'}}
+    reason: Measured 2026-11-07, the list returns a {count, value} envelope.
+  - op: set
+    at: [paths, '/{organization}/_apis/serviceendpoint/endpoints/{endpointId}', delete, responses]
+    value: {'204': {description: The connection was deleted from the given projects.}}
+    reason: Measured 2026-11-07, delete returns 204 No Content; the source declares 200.

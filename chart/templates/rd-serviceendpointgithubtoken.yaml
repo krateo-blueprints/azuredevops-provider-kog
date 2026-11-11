@@ -1,0 +1,93 @@
+{{- if include "azuredevops-provider-kog.kindEnabled" (list . "ServiceEndpointGitHubToken") -}}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-serviceendpointgithubtoken
+  namespace: {{ .Release.Namespace }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-serviceendpointgithubtoken/serviceendpointgithubtoken.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: ServiceEndpointGitHubToken
+    # A connection name is unique within a project and known before creation.
+    identifiers:
+      - name
+    # Append-only once generated. id addresses get/update/delete.
+    additionalStatusFields:
+      - id
+      - isReady
+    # `AccessToken` is written by the secretRef resolver from AccessTokenSecretRef; excluding it from the
+    # spec means a cleartext secret cannot be put in a CR at all. `operation` (PUT) and `deep`
+    # (DELETE) are request options, not desired state. (Immutable list.)
+    excludedSpecFields:
+      - authorization.parameters.AccessToken
+      - operation
+      - deep
+      - actionFilter
+    # Compare what a PUT expresses (the whole request body).
+    compareScope: updatable
+    configurationFields:
+      - fromOpenAPI: {name: api-version, in: query}
+        fromRestDefinition: {actions: ["*"]}
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /{organization}/{project}/_apis/serviceendpoint/endpoints
+        itemsPath: value
+        fieldMapping:
+          - inQuery: endpointNames
+            inCustomResource: spec.name
+        # Azure DevOps redacts secrets to null on read. No responseTransform drops them: the comparison
+        # only looks at keys the spec holds, and the secret parameter is excluded from the spec. Dropping
+        # them EMPTIED `parameters` for kinds whose only parameter is the secret, and rest-dynamic-controller
+        # reads a CR object against an empty remote object as drift (measured on 0.56.0, Token kind).
+      - action: create
+        method: POST
+        path: /{organization}/_apis/serviceendpoint/endpoints
+        fieldMapping:
+          # inCustomResource names the resolver's CR-side source, which rest-dynamic-controller drops
+          # from the body: without it the AccessTokenSecretRef object is sent too, and Azure DevOps cannot
+          # read a non-string parameter (400 "Value cannot be null. Parameter name: endpoint", measured).
+          - &secret
+            inBody: authorization.parameters.AccessToken
+            inCustomResource: spec.authorization.parameters.AccessTokenSecretRef
+            resolver:
+              type: secretRef
+              secretRef:
+                nameFromCustomResource: spec.authorization.parameters.AccessTokenSecretRef.name
+                keyFromCustomResource: spec.authorization.parameters.AccessTokenSecretRef.key
+      - action: get
+        method: GET
+        path: /{organization}/{project}/_apis/serviceendpoint/endpoints/{endpointId}
+        fieldMapping:
+          - inPath: endpointId
+            inCustomResource: status.id
+        # A deleted connection answers 200 with a JSON null body, not 404 (measured).
+        notFoundBody: {inline: '. == null'}
+      - action: update
+        method: PUT
+        path: /{organization}/_apis/serviceendpoint/endpoints/{endpointId}
+        fieldMapping:
+          - inPath: endpointId
+            inCustomResource: status.id
+          - inBody: id
+            inCustomResource: status.id
+          - *secret
+      # projectIds must be project GUIDs (a name returns 400, measured). It lists EVERY project the
+      # spec shares the connection with: the API removes the connection from the projects named, so
+      # naming only the first would leave it in the others.
+      - action: delete
+        method: DELETE
+        path: /{organization}/_apis/serviceendpoint/endpoints/{endpointId}
+        fieldMapping:
+          - inPath: endpointId
+            inCustomResource: status.id
+          - inQuery: projectIds
+            inCustomResource: spec.serviceEndpointProjectReferences
+            valueMapping:
+              type: jq
+              jq:
+                inline: >-
+                  if (type != "array") or (length == 0) then error("spec.serviceEndpointProjectReferences must list at least one project")
+                  else [.[].projectReference.id] | if any(.[]; (type != "string") or . == "") then error("every serviceEndpointProjectReferences[].projectReference.id must be a project id") else join(",") end end
+{{- end }}

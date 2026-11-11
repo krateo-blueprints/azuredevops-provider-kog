@@ -10,7 +10,7 @@ timestamp: 2026-11-07T00:00:00Z
 # Examples
 
 - [dev-cluster](../examples/dev-cluster/README.md): a local kind cluster running oasgen-provider
-  0.55.0, with the PAT Secret every kind's Configuration references. This is the environment the
+  0.56.0, with the PAT Secret every kind's Configuration references. This is the environment the
   live tests run in.
 - [repository-pipeline](../examples/repository-pipeline/README.md): a repository initialized
   with `GitPush`, a YAML `Pipeline` on it, and a `PipelinePermission` on an environment. This is

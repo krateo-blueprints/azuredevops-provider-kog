@@ -9,7 +9,7 @@ on:
 env:
   # The oasgen-provider release the chart is built and live-tested against. oasgen-render ships in
   # this image; preflight-refs resolves this literal reference against the registry.
-  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.55.0
+  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.56.0
 
 jobs:
   lint-docs:
