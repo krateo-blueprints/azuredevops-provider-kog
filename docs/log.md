@@ -11,6 +11,24 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-12 — oasgen-provider 0.61.0
+
+- Pin moved from 0.57.0 to 0.61.0. It skips 0.59.0 (oasgen-provider#599) and 0.60.0, which was
+  superseded by 0.61.0 on the morning its regression was due.
+- Measured on a disposable GKE cluster, upgrading in place from 0.57.0, the path a user takes:
+  CRDs chart, then the provider. All 25 RestDefinitions regenerated with the expected build
+  stamp (`0.61.0-05546c0e…`, worked out before the run), no reconciler errors and no provider
+  restarts. A `GitRepository` created on 0.57.0 stayed Ready with the same id, and its later
+  delete removed it from Azure DevOps.
+- Full regression on 0.61.0: 178 of 178 checks across 11 live suites. The adoption step now also
+  asserts `Synced=True` on the adopted connection (oasgen-provider#540).
+- Controller restarts: a change to the Secrets a kind references no longer restarts its controller
+  (#588; Deployment revision unchanged over 240 s, longer than the provider's poll). Adding and
+  then removing an `rdc.env` key changed all 25 controller ConfigMaps and rolled every controller
+  exactly once each time (#599, #595).
+- The PAT for these runs now comes from GCP Secret Manager through External Secrets Operator and
+  Workload Identity, so a run needs no one at the keyboard.
+
 ## 2026-11-11 — Not moving to oasgen-provider 0.59.0
 
 - The 0.57.0 entry below says #579 and #588 were planned for 0.59.0. 0.59.0 fixes #579, but its

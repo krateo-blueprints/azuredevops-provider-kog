@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.57.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.61.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.57.0 chart).
-- oasgen-provider **0.57.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.61.0 chart).
+- oasgen-provider **0.61.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -20,7 +20,7 @@ timestamp: 2026-11-07T00:00:00Z
 
 ```sh
 helm install azuredevops-provider-kog oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog \
-  --version 0.1.0 --namespace krateo-system
+  --version 0.2.0 --namespace krateo-system
 ```
 
 Both charts are also in the krateo-blueprints helm index (`operators` channel), with the same bytes.
@@ -46,7 +46,7 @@ kubectl -n krateo-system create secret generic azuredevops-pat \
   --from-literal=username=kog --from-literal=token="$AZURE_DEVOPS_PAT"
 helm install azuredevops-provider-kog-config \
   oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog-config \
-  --version 0.1.0 --namespace krateo-system
+  --version 0.2.0 --namespace krateo-system
 ```
 
 Use a PAT scoped to one organization: global PATs stop working on 2026-12-01.
@@ -64,22 +64,33 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
+### Upgrading oasgen-provider from 0.57.0 to 0.61.0
+
+Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
+`helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). What to expect,
+measured 2026-11-12 on a disposable GKE cluster with this chart's 25 kinds:
+
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.61.0-05546c0e…`) with
+  no reconciler error. The status-update conflict 0.57.0 logs once per RestDefinition after an
+  upgrade (oasgen-provider#579) is gone.
+- **Every generated controller rolls once**, because its image moves to rest-dynamic-controller
+  0.61.0. Their ConfigMaps do not change. Live CRs are unaffected: a `GitRepository` created on
+  0.57.0 stayed Ready with the same id on 0.61.0.
+- A change to the Secrets a kind's CRs reference no longer restarts its controller
+  (oasgen-provider#588): the Deployment revision stays the same.
+- An `rdc.env` change on the provider chart (adding or removing a key) rolls every generated
+  controller exactly once (oasgen-provider#599, #595). It is eventually consistent: allow up to
+  about five minutes, because each RestDefinition picks it up on its own 3-minute poll.
+
+Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
+(oasgen-provider#599, fixed in 0.60.0). Moving back from 0.61.0 to 0.57.0 was not tested; treat
+the upgrade as forward only.
+
 ### Upgrading oasgen-provider from 0.56.0 to 0.57.0
 
-Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider` (live CRs keep working; on
-this chart's 25 kinds the generated CRDs are byte-identical). **Forward only:** a CR reconciled by
-0.57.0 is not supported by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are
-read, #545 removes the per-resource Secret Role). Two log patterns are expected and harmless on
-0.57.0: one `Reconciler error … cannot update managed resource status` per RestDefinition right
-after the upgrade (oasgen-provider#579), and a controller restart each time the set of Secrets a
-kind's CRs reference changes (oasgen-provider#588).
-
-**Stay on 0.57.0; do not move to 0.59.0.** 0.59.0 fixes #579, but in place of #588's extra
-restarts it never restarts a generated controller when its ConfigMap changes (oasgen-provider#599:
-the provider reads the live ConfigMap under the wrong name). An `rdc.env` change on the provider
-chart then never reaches a running controller, with no error. Measured 2026-11-11 on GKE: all 25
-ConfigMaps changed, no rollout, every pod still the one created at install. The fix (#599 with
-#597) is due in the next oasgen-provider release; this chart moves its pin once that is verified.
+CRDs chart first, then the provider. **Forward only:** a CR reconciled by 0.57.0 is not supported
+by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are read, #545 removes the
+per-resource Secret Role). Then continue to 0.61.0 as above.
 
 ## Migrating from the classic provider
 
