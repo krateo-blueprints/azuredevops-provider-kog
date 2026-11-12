@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: azuredevops-provider-kog — overview
-description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.57.0 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
+description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.61.0 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, oasgen-provider, rest-dynamic-controller, azure-devops]
 timestamp: 2026-11-07T00:00:00Z
@@ -21,7 +21,7 @@ nothing.
 
 | Decision | Choice | Why |
 |---|---|---|
-| oasgen-provider | `krateo-platformops/oasgen-provider` **0.57.0**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
+| oasgen-provider | `krateo-platformops/oasgen-provider` **0.61.0**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
 | API group | `azuredevops.krateo.io` | The family convention (`github.krateo.io`). This makes the chart **mutually exclusive** with the classic provider on one cluster; [usage](./usage.md) has the migration. |
 | Kind names | Singular: `Group`, `User`, `SecureFile`, `VariableGroup`, `ServiceEndpoint` | Kubernetes convention. The classic provider used `Groups`, `Users`, `SecureFiles`, `VariableGroups`, `Endpoint`. |
 | References | Azure DevOps names or ids, not Kubernetes `*Ref`s | A RestDefinition resolves values from its own CR. Most ADO paths accept a project or repository name in place of its id. |
@@ -134,7 +134,7 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#508 | Dependent lookups cannot send `api-version`: `Queue` needs `spec.pool.id`; Phase 3 identity lookups wait. |
 | oasgen-provider#510 | `secretRef` resources failed on 0.53.0 to 0.55.0; 0.56.0 grants each referenced Secret (#527). Still open: revocation waits for the drift poll (measured 48 to 181 s after a delete, healthy CRs). |
 | oasgen-provider#537 | A `secretRef` mapping must name its source in `inCustomResource`, or the reference object is sent to the vendor (Azure DevOps answers 400): every ServiceEndpoint kind sets it. |
-| oasgen-provider#540 | Fixed in 0.57.0: adopting an existing connection converges (measured 2026-11-11: adopted, corrected, deleted; no duplicate). On 0.56.0 every update of an adopted resource failed. |
+| oasgen-provider#540 | Fixed in 0.57.0: adopting an existing connection converges (measured 2026-11-11: adopted, corrected, deleted; no duplicate; on 0.61.0 2026-11-12 also `Synced=True` after the correction). On 0.56.0 every update of an adopted resource failed. |
 | oasgen-provider#486 | No offset pagination (Azure DevOps also needs a short-page signal and cross-page consistency, measured): `Team` is held. |
 | oasgen-provider#514 | A bracket-escaped `inQuery` (`'["searchCriteria.sourceRefName"]'`) is not recognised as supplying its parameter at generation: `PullRequest` also excludes the escaped names (runtime binding verified on the wire). |
 | oasgen-provider#517, #519 | Identifiers that index into an array (`settings.scope.0.*`) never match at runtime, and generate an object-keyed status: the one-per-branch policy kinds are held. |
@@ -144,6 +144,6 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#529 | A failed write reported as HTTP 200 with the failure in the body is treated as success: `User` is held. |
 | oasgen-provider#567 | Fixed in 0.57.0 (#570): a failed call's error-body snippet is redacted. 0.56.0 logs it unredacted at INFO ([usage](usage.md)). |
 | oasgen-provider#566 | Fixed in 0.57.0 (#570): `krateo.io/connector-verbose` response dumps are redacted. |
-| oasgen-provider#579, #588 | On 0.57.0: one status-update conflict per RestDefinition after an upgrade, and a controller restart whenever a kind's set of referenced Secrets changes. Harmless here. |
-| oasgen-provider#599 | On 0.59.0 a generated controller is never restarted when its ConfigMap changes, so an `rdc.env` change never reaches it: this chart stays on 0.57.0 until the fix ships ([usage](usage.md)). |
+| oasgen-provider#579, #588 | Fixed (measured on 0.61.0, 2026-11-12): no status-update conflict on upgrade, and a change to the Secrets a kind references no longer restarts its controller. On 0.57.0 both happen and are harmless. |
+| oasgen-provider#599 | Fixed in 0.60.0 (measured on 0.61.0): an `rdc.env` change rolls every generated controller exactly once. On 0.59.0 it never reached a running controller: do not use 0.59.0 ([usage](usage.md)). |
 | oasgen-provider#528 | Request mappings whose CR path does not resolve are skipped silently; the permission kinds' jq refuses on a missing component instead of composing a wrong token. |

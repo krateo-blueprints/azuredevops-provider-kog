@@ -10,7 +10,7 @@ timestamp: 2026-11-07T00:00:00Z
 # azuredevops-provider-kog
 
 azuredevops-provider-kog is a Krateo **KOG** provider, built on
-[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.57.0**. It
+[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.61.0**. It
 exposes Azure DevOps REST resources as Kubernetes kinds under `azuredevops.krateo.io`.
 
 It replaces two unmigrated predecessors. One is the classic, hand-written azuredevops-provider
