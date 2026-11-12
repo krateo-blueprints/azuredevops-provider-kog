@@ -37,6 +37,13 @@ spec:
       - action: findby
         method: GET
         path: /{organization}/_apis/projects
+        # The list defaults to stateFilter=wellFormed, which hides a project for its first ~3-7 s
+        # (state "new", measured 2026-11-12). A CR deleted inside that window cannot find the project
+        # it just created, so the delete path releases it and the project is orphaned. "all" lists
+        # "new" from the first second and still excludes soft-deleted projects (only
+        # stateFilter=deleted lists those, measured), so findby cannot adopt one from the recycle bin.
+        queries:
+          - {name: stateFilter, value: all}
         itemsPath: value
         pagination:
           type: continuationToken
