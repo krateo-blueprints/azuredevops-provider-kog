@@ -114,8 +114,12 @@ adding a property to its document within one provider poll:
   first stated. A restart at the same version does not re-render.
 - **0.63.1:** the same sequence left no stale CRD.
 
-0.63.0 also starts enforcing value constraints written inside `not` in OpenAPI documents. This
-chart's 25 documents contain no `not`, so it changes nothing here.
+0.63.0 changes nothing about `not`. It moved the CRD generator to a version that could emit richer
+`not` subschemas, but a `not` in an OpenAPI document never reaches the generator through a
+RestDefinition (oasgen-provider#396), so no document is affected. This was measured by
+github-provider-kog against the released binaries. An earlier version of this page said 0.63.0
+"starts enforcing" such constraints; that repeated oasgen-provider's 0.63.0 release note, corrected
+in oasgen-provider#639.
 
 ### Upgrading oasgen-provider from 0.56.0 to 0.57.0
 
