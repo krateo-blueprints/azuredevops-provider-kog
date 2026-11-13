@@ -11,6 +11,22 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-13 — oasgen-provider 0.63.1
+
+- Pin moved from 0.62.0 to 0.63.1, measured on a disposable GKE cluster upgrading in place from
+  0.62.0 with chart 0.3.0. All 25 RestDefinitions regenerated with the expected stamp
+  (`0.63.1-692a993e…`), with no reconciler errors and no provider restarts. A `GitRepository`
+  created on 0.62.0 kept its id.
+- 0.63.1 passed all 12 live suites (194 checks), counting the new `TeamProject` adoption test and
+  a separate re-run of the policy suite. A Secret-name change restarted no controller. Adding and
+  then removing an `rdc.env` key rolled every controller once each time. `TeamProject`s deleted 0,
+  5, 15 and 30 s after creation were all deleted at the vendor, before and after the upgrade.
+- The first run's policy suite failed 5 checks because a local file holding a fixture id had
+  disappeared. The suite now looks the fixture up in Azure DevOps by name.
+- The stale-CRD bug fixed in 0.63.1 was reproduced on purpose on 0.62.0 and checked on 0.63.1
+  ([usage](usage.md)). The `status.oasHash` repair was run for the first time. An upgrade turned
+  out to clear a stale CRD, which corrects the 0.3.0 release notes.
+
 ## 2026-11-13 — TeamProject finds projects that are still being created
 
 - `TeamProject`'s findby now sends `stateFilter=all`. Azure DevOps' project list defaults to

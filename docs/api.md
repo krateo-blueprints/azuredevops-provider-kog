@@ -12,7 +12,7 @@ timestamp: 2026-11-07T00:00:00Z
 > Kubernetes note: use fully qualified resource names with kubectl
 > (`gitrepositories.azuredevops.krateo.io`); short names such as `gitrepository` can be ambiguous.
 
-The chart defines no CRDs of its own. For each kind, oasgen-provider 0.62.0 generates:
+The chart defines no CRDs of its own. For each kind, oasgen-provider 0.63.1 generates:
 
 | Kind | apiVersion |
 |---|---|
