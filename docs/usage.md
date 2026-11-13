@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.62.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.63.1, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.62.0 chart).
-- oasgen-provider **0.62.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.63.1 chart).
+- oasgen-provider **0.63.1**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -20,7 +20,7 @@ timestamp: 2026-11-07T00:00:00Z
 
 ```sh
 helm install azuredevops-provider-kog oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog \
-  --version 0.2.0 --namespace krateo-system
+  --version 0.3.0 --namespace krateo-system
 ```
 
 Both charts are also in the krateo-blueprints helm index (`operators` channel), with the same bytes.
@@ -46,7 +46,7 @@ kubectl -n krateo-system create secret generic azuredevops-pat \
   --from-literal=username=kog --from-literal=token="$AZURE_DEVOPS_PAT"
 helm install azuredevops-provider-kog-config \
   oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog-config \
-  --version 0.2.0 --namespace krateo-system
+  --version 0.3.0 --namespace krateo-system
 ```
 
 Use a PAT scoped to one organization: global PATs stop working on 2026-12-01.
@@ -64,14 +64,15 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider to 0.62.0
+### Upgrading oasgen-provider to 0.63.1
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
-measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0 and 0.61.0 to
-0.62.0 (2026-11-12). The direct jump from 0.57.0 to 0.62.0 was not run on its own. What to expect:
+measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
+(2026-11-12) and 0.62.0 to 0.63.1 (2026-11-13). Larger jumps were not run on their own. What to
+expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.62.0-8d6143fc…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.63.1-692a993e…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -92,18 +93,35 @@ Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running co
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat
 each upgrade as forward only.
 
-**Stale generated CRD (upstream, fixed in 0.63.1).** According to oasgen-provider, every release
-up to 0.63.0 can keep serving an outdated generated CRD when a RestDefinition's OpenAPI document
-changes and that change is first observed while the kind's controller Deployment is absent, as
-can happen during a provider upgrade or restart. An upgrade does not clear it. This chart has not
-observed it. If a kind's CRD does not match its document after an upgrade, follow
-oasgen-provider's guidance for 0.63.1.
+**Stale generated CRD (fixed in 0.63.1).** Up to 0.63.0, the provider can keep serving an
+outdated generated CRD. This happens when a RestDefinition's OpenAPI document changes and the
+provider first sees the change while that kind's controller Deployment is absent. The provider
+recreates the Deployment and records the new document hash in `status`, but does not re-render the
+CRD. The status then looks healthy, so only comparing the served CRD with the document reveals it.
+Measured 2026-11-13 on a disposable GKE cluster, by deleting a kind's controller Deployment and
+adding a property to its document within one provider poll:
+
+- **0.62.0:** both test kinds kept their old CRD, and a third poll did not fix it. A kind edited
+  with its Deployment present picked the property up.
+- **Repair on 0.62.0:** with the controller Deployment Ready,
+  `kubectl -n krateo-system patch restdefinition <name> --subresource=status --type=merge -p '{"status":{"oasHash":""}}'`
+  re-rendered the CRD in 17 s. Run it only while the Deployment exists. According to
+  oasgen-provider, patching while it is absent forms the stale state again; this chart has not
+  tested that.
+- **An upgrade to a new provider version clears it.** Every definition is re-rendered once (on by
+  default since 0.53.0). The stale kind regenerated during the upgrade to 0.63.1 with no patch.
+  This corrects the 0.3.0 release notes, which said an upgrade does not clear it, as upstream had
+  first stated. A restart at the same version does not re-render.
+- **0.63.1:** the same sequence left no stale CRD.
+
+0.63.0 also starts enforcing value constraints written inside `not` in OpenAPI documents. This
+chart's 25 documents contain no `not`, so it changes nothing here.
 
 ### Upgrading oasgen-provider from 0.56.0 to 0.57.0
 
 CRDs chart first, then the provider. **Forward only:** a CR reconciled by 0.57.0 is not supported
 by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are read, #545 removes the
-per-resource Secret Role). Then continue to 0.62.0 as above.
+per-resource Secret Role). Then continue to 0.63.1 as above.
 
 ## Migrating from the classic provider
 
