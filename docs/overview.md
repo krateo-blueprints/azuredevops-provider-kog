@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: azuredevops-provider-kog — overview
-description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.63.1 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
+description: How azuredevops-provider-kog works — RestDefinitions plus trimmed Azure DevOps OpenAPI documents that oasgen-provider 0.64.0 turns into azuredevops.krateo.io CRDs and one controller per kind — and the design decisions and phase plan behind it.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, oasgen-provider, rest-dynamic-controller, azure-devops]
 timestamp: 2026-11-07T00:00:00Z
@@ -21,7 +21,7 @@ nothing.
 
 | Decision | Choice | Why |
 |---|---|---|
-| oasgen-provider | `krateo-platformops/oasgen-provider` **0.63.1**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
+| oasgen-provider | `krateo-platformops/oasgen-provider` **0.64.0**, which pins the provider and rest-dynamic-controller together | The only maintained line. Since 0.35.0 both components share one version, so there is no separate controller floor. |
 | API group | `azuredevops.krateo.io` | The family convention (`github.krateo.io`). This makes the chart **mutually exclusive** with the classic provider on one cluster; [usage](./usage.md) has the migration. |
 | Kind names | Singular: `Group`, `User`, `SecureFile`, `VariableGroup`, `ServiceEndpoint` | Kubernetes convention. The classic provider used `Groups`, `Users`, `SecureFiles`, `VariableGroups`, `Endpoint`. |
 | References | Azure DevOps names or ids, not Kubernetes `*Ref`s | A RestDefinition resolves values from its own CR. Most ADO paths accept a project or repository name in place of its id. |
@@ -71,7 +71,7 @@ addresses the project.
 | 2a | `TeamProject` (async), `Environment`, `Queue`, `CheckApproval`, `CheckExclusiveLock`, `CheckRequiredTemplate`, `CheckTask` | ✅ verified live 2026-11-07 on 0.54.1 |
 | 2b | `PullRequest`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `PolicyStatus`, `Feed` | ✅ verified live 2026-11-08 on 0.54.1 |
 | 2c | `ServiceEndpointUsernamePassword`, `ServiceEndpointToken`, `ServiceEndpointGitHubToken`, `ServiceEndpointServicePrincipal` | ✅ verified live 2026-11-09 on 0.56.0; adopting an existing connection verified 2026-11-11 on 0.57.0 |
-| planned | `VariableGroup` | Secret variables are a map keyed by user-chosen names, and a `secretRef` addresses one path: needs a map-valued resolver or a wildcard path (to be designed with oasgen-provider) |
+| planned | `VariableGroup` | Secret variables are a map keyed by user-chosen names, and a `secretRef` addresses one path: needs a map-valued resolver or a wildcard path (to be designed with oasgen-provider) (oasgen-provider#647) |
 | held | `Team` | Built and verified; held until offset pagination exists (oasgen-provider#486) |
 | held | `PolicyMinimumReviewers`, `PolicyWorkItemLinking`, `PolicyCommentRequirements`, `PolicyMergeStrategy` | Lifecycle verified; held because they cannot adopt (identity is in `settings.scope[0]`, oasgen-provider#517, #519) |
 | 3 | `Group`, `GroupMembership`, `RepositoryPermission`, `FeedPermission` | ✅ verified live 2026-11-08 on 0.55.0 |
@@ -142,10 +142,12 @@ with `oldObjectId` set to the branch's current head. Tracked upstream as oasgen-
 | oasgen-provider#483 | "identifiers are absent from the items the findby response carries" is a false positive when the fields are inherited through `allOf` (Check, Pipeline, Feed kinds adopt live). |
 | oasgen-provider#521 | A verb cannot send a raw (non-JSON) body sourced from a Secret: `SecureFile` waits (Azure DevOps stores the request bytes verbatim, so a JSON body would silently become the file). |
 | oasgen-provider#529 | A failed write reported as HTTP 200 with the failure in the body is treated as success: `User` is held. |
+| oasgen-provider#647 | A `secretRef` resolves one path, so a map of secret values is inexpressible: `VariableGroup` waits on a whole-map resolver. Measured on Azure DevOps: a secret's value is never returned, an update that sends it as `null` or omits it keeps the stored value, and a variable left out of the map is deleted. |
+| oasgen-provider#648 | After a successful create or update, the next observe waits for the 3-minute poll, so `Ready` lags the vendor by up to one poll interval (measured on 0.64.0, also on earlier releases). |
 | oasgen-provider#567 | Fixed in 0.57.0 (#570): a failed call's error-body snippet is redacted. 0.56.0 logs it unredacted at INFO ([usage](usage.md)). |
 | oasgen-provider#566 | Fixed in 0.57.0 (#570): `krateo.io/connector-verbose` response dumps are redacted. |
-| oasgen-provider#579, #588 | Fixed (measured on 0.61.0, 0.62.0 and 0.63.1): no status-update conflict on upgrade, and a change to the Secrets a kind references no longer restarts its controller. On 0.57.0 both happen and are harmless. |
+| oasgen-provider#579, #588 | Fixed (measured on 0.61.0, 0.62.0, 0.63.1 and 0.64.0): no status-update conflict on upgrade, and a change to the Secrets a kind references no longer restarts its controller. On 0.57.0 both happen and are harmless. |
 | Stale generated CRD | Fixed in 0.63.1 (measured 2026-11-13): up to 0.63.0, a document change first seen while the kind's controller Deployment is absent leaves the old CRD served, while `status` looks current. An upgrade or the `status.oasHash` reset clears it ([usage](usage.md)). |
 | oasgen-provider#593 | Fixed in 0.62.0 (measured 2026-11-12): a CR deleted before its id reaches status no longer orphans silently. The delete path looks the resource up once and, when that finds nothing, releases the CR with an `OrphanedExternalResourcePossible` Warning Event. On 0.61.0 every such delete orphaned the external object with no event. `TeamProject` lists projects with `stateFilter=all`: the default (`wellFormed`) hides a new project for its first seconds, so a delete in that window could not find it (on 0.62.0 with the default, the 0 s trial was still orphaned, with the Warning). With `all`, all four trials deleted the project. |
-| oasgen-provider#599 | Fixed in 0.60.0 (measured on 0.61.0, 0.62.0 and 0.63.1): an `rdc.env` change rolls every generated controller exactly once. On 0.59.0 it never reached a running controller: do not use 0.59.0 ([usage](usage.md)). |
+| oasgen-provider#599 | Fixed in 0.60.0 (measured on 0.61.0, 0.62.0, 0.63.1 and 0.64.0): an `rdc.env` change rolls every generated controller exactly once. On 0.59.0 it never reached a running controller: do not use 0.59.0 ([usage](usage.md)). |
 | oasgen-provider#528 | Request mappings whose CR path does not resolve are skipped silently; the permission kinds' jq refuses on a missing component instead of composing a wrong token. |

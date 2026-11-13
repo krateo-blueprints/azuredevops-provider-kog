@@ -11,6 +11,35 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-14 — oasgen-provider 0.64.0
+
+- Pin moved from 0.63.1 to 0.64.0, measured on a disposable GKE cluster upgrading in place from
+  0.63.1 with chart 0.4.0. All 25 RestDefinitions regenerated with the expected stamp
+  (`0.64.0-17803279…`), with no reconciler errors and no provider restarts. A `GitRepository`
+  created on 0.63.1 kept its id.
+- All 25 kinds declare both a create and a get on the live RestDefinitions, so 0.64.0's new
+  handling of kinds that cannot create does not reach this chart. This chart never sets
+  `resources.limits.memory`, which the render chart now rejects.
+- The 12 live suites ran 194 checks: 193 passed. One Group check failed when `kubectl wait` exited
+  with an error after 99 s of its 420 s budget, while the Group was legitimately waiting for its
+  controller's next poll. The suites discarded the error output, so the cause is not known. The
+  suites now poll instead of using `kubectl wait`, keep the output of a failed check, and print the
+  object's conditions and events on a timeout. The Group suite then passed all 13 checks on a fresh
+  0.64.0 cluster.
+- A Secret-name change restarted no controller. Adding and then removing an `rdc.env` key rolled
+  every controller once each time. `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all
+  deleted at the vendor, before and after the upgrade.
+- A status-field census sampled every CR for 154 minutes: every declared status field was filled on
+  at least one CR of each of the 24 kinds observed (`Environment`'s CRs lived 13 s, too short to
+  sample). So Azure DevOps sends every field this chart declares (relevant to
+  oasgen-provider#642).
+- `Ready` lags a successful create or update by up to one 3-minute poll (oasgen-provider#648); the
+  census shows it on every kind.
+- `VariableGroup`'s design was measured on Azure DevOps, using a self-hosted pipeline agent to read
+  the secret values. A secret's value is never returned. An update that sends it as `null` or omits
+  the value keeps the stored value, and a variable left out of the map is deleted. Filed as
+  oasgen-provider#647 (a whole-map `secretRef` resolver).
+
 ## 2026-11-13 — oasgen-provider 0.63.1
 
 - Pin moved from 0.62.0 to 0.63.1, measured on a disposable GKE cluster upgrading in place from
