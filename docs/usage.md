@@ -85,7 +85,8 @@ measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0
 - A CR deleted before its id reaches status (oasgen-provider#593) is no longer orphaned silently.
   When the delete path cannot find the external object, it still releases the CR (holding it
   would make it undeletable), but emits an `OrphanedExternalResourcePossible` Warning Event naming
-  the resource. Alert on that reason. For `TeamProject`, see the overview.
+  the resource. Alert on that reason. `TeamProject` closes the remaining window itself (it lists
+  projects with `stateFilter=all`): in the measured trials no project was orphaned at any delay.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat

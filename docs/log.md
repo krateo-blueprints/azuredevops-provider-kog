@@ -11,6 +11,19 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-13 — TeamProject finds projects that are still being created
+
+- `TeamProject`'s findby now sends `stateFilter=all`. Azure DevOps' project list defaults to
+  `wellFormed`, which hides a new project (state `new`) for about 3–7 s. A CR deleted in that
+  window could not find the project it had just created, so the project was orphaned
+  (oasgen-provider#593 announces it on 0.62.0 but cannot avoid it).
+- Measured on the vendor by polling the REST API: `all` lists a new project from the first second
+  and does not list soft-deleted projects, which only `stateFilter=deleted` returns. So findby
+  cannot adopt a project from the recycle bin.
+- Measured on 0.62.0 with this as the only change: TeamProjects deleted 0, 5, 15 and 30 s after
+  their create were all deleted at the vendor, with no orphan and no warning. With the default
+  filter, the 0 s trial had been orphaned.
+
 ## 2026-11-13 — oasgen-provider 0.62.0
 
 - Pin moved from 0.61.0 to 0.62.0, measured on a disposable GKE cluster upgrading in place from
