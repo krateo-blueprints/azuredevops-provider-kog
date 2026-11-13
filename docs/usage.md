@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.61.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.62.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.61.0 chart).
-- oasgen-provider **0.61.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.62.0 chart).
+- oasgen-provider **0.62.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -64,33 +64,45 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider from 0.57.0 to 0.61.0
+### Upgrading oasgen-provider to 0.62.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
-`helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). What to expect,
-measured 2026-11-12 on a disposable GKE cluster with this chart's 25 kinds:
+`helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
+measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0 and 0.61.0 to
+0.62.0 (2026-11-12). The direct jump from 0.57.0 to 0.62.0 was not run on its own. What to expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.61.0-05546c0e…`) with
-  no reconciler error. The status-update conflict 0.57.0 logs once per RestDefinition after an
-  upgrade (oasgen-provider#579) is gone.
-- **Every generated controller rolls once**, because its image moves to rest-dynamic-controller
-  0.61.0. Their ConfigMaps do not change. Live CRs are unaffected: a `GitRepository` created on
-  0.57.0 stayed Ready with the same id on 0.61.0.
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.62.0-8d6143fc…`) with no
+  reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
+  RestDefinition after an upgrade (oasgen-provider#579) is gone.
+- **Every generated controller rolls once**, because its image moves to the new
+  rest-dynamic-controller. Their ConfigMaps do not change. Live CRs are unaffected: a
+  `GitRepository` created before each upgrade stayed Ready with the same id.
 - A change to the Secrets a kind's CRs reference no longer restarts its controller
   (oasgen-provider#588): the Deployment revision stays the same.
 - An `rdc.env` change on the provider chart (adding or removing a key) rolls every generated
   controller exactly once (oasgen-provider#599, #595). It is eventually consistent: allow up to
   about five minutes, because each RestDefinition picks it up on its own 3-minute poll.
+- A CR deleted before its id reaches status (oasgen-provider#593) is no longer orphaned silently.
+  When the delete path cannot find the external object, it still releases the CR (holding it
+  would make it undeletable), but emits an `OrphanedExternalResourcePossible` Warning Event naming
+  the resource. Alert on that reason. For `TeamProject`, see the overview.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
-(oasgen-provider#599, fixed in 0.60.0). Moving back from 0.61.0 to 0.57.0 was not tested; treat
-the upgrade as forward only.
+(oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat
+each upgrade as forward only.
+
+**Stale generated CRD (upstream, fixed in 0.63.1).** According to oasgen-provider, every release
+up to 0.63.0 can keep serving an outdated generated CRD when a RestDefinition's OpenAPI document
+changes and that change is first observed while the kind's controller Deployment is absent, as
+can happen during a provider upgrade or restart. An upgrade does not clear it. This chart has not
+observed it. If a kind's CRD does not match its document after an upgrade, follow
+oasgen-provider's guidance for 0.63.1.
 
 ### Upgrading oasgen-provider from 0.56.0 to 0.57.0
 
 CRDs chart first, then the provider. **Forward only:** a CR reconciled by 0.57.0 is not supported
 by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are read, #545 removes the
-per-resource Secret Role). Then continue to 0.61.0 as above.
+per-resource Secret Role). Then continue to 0.62.0 as above.
 
 ## Migrating from the classic provider
 

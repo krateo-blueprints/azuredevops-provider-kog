@@ -11,6 +11,23 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-13 — oasgen-provider 0.62.0
+
+- Pin moved from 0.61.0 to 0.62.0, measured on a disposable GKE cluster upgrading in place from
+  0.61.0. All 25 RestDefinitions regenerated with the expected stamp (`0.62.0-8d6143fc…`), with
+  no reconciler errors and no provider restarts. A `GitRepository` created on 0.61.0 kept its id.
+  The run passed 178 of 178 checks across 11 live suites. A Secret-name change restarted no
+  controller (#588). Adding and then removing an `rdc.env` key rolled every controller once each
+  time (#599).
+- oasgen-provider#593, a CR deleted inside its create window: one `TeamProject` per trial was
+  deleted 0, 5, 15 and 30 s after its create was sent, before `status.id` was set. On 0.61.0 all 4
+  orphaned the project with no event. On 0.62.0 the 5, 15 and 30 s trials deleted the project. At
+  0 s the project was still orphaned, but the CR now carried an `OrphanedExternalResourcePossible`
+  Warning, because Azure DevOps' default project list hides a project for its first seconds.
+- The first run was cut off midway when the session driving it exited. Runs now start detached.
+  The next run removes what an interrupted suite left in Azure DevOps, matching only the exact
+  per-run names.
+
 ## 2026-11-12 — oasgen-provider 0.61.0
 
 - Pin moved from 0.57.0 to 0.61.0. It skips 0.59.0 (oasgen-provider#599) and 0.60.0, which was
