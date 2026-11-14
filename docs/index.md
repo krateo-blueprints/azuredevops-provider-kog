@@ -10,7 +10,7 @@ timestamp: 2026-11-07T00:00:00Z
 # azuredevops-provider-kog
 
 azuredevops-provider-kog is a Krateo **KOG** provider, built on
-[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.63.1**. It
+[`oasgen-provider`](https://github.com/krateo-platformops/oasgen-provider) **0.64.0**. It
 exposes Azure DevOps REST resources as Kubernetes kinds under `azuredevops.krateo.io`.
 
 It replaces two unmigrated predecessors. One is the classic, hand-written azuredevops-provider
@@ -28,7 +28,7 @@ no proxy.
 |--------|-------|-------|
 | **Repositories** | **`GitRepository`**, **`GitPush`**, **`PullRequest`**, **`PolicyBuildValidation`**, **`PolicyRequiredReviewers`**, **`PolicyStatus`** ✅ · one-per-branch policies (held for #517) | 1 / 2b / held |
 | **Pipelines** | **`Pipeline`**, **`PipelinePermission`**, **`Environment`**, **`Queue`**, **`CheckApproval`**, **`CheckExclusiveLock`**, **`CheckRequiredTemplate`**, **`CheckTask`**, **`Run`** ✅ | 1 / 2a / 4 |
-| **Project & config** | **`TeamProject`**, **`ServiceEndpointUsernamePassword`**, **`ServiceEndpointToken`**, **`ServiceEndpointGitHubToken`**, **`ServiceEndpointServicePrincipal`** ✅ · `VariableGroup` (planned: its secrets are a map), `SecureFile` (waits on #521) | 2a / 2c / 4 |
+| **Project & config** | **`TeamProject`**, **`ServiceEndpointUsernamePassword`**, **`ServiceEndpointToken`**, **`ServiceEndpointGitHubToken`**, **`ServiceEndpointServicePrincipal`** ✅ · `VariableGroup` (planned: its secrets are a map, #647), `SecureFile` (waits on #521) | 2a / 2c / 4 |
 | **Artifacts** | **`Feed`**, **`FeedPermission`** ✅ | 2b / 3 |
 | **Identity & access** | **`Group`**, **`GroupMembership`**, **`RepositoryPermission`** ✅ · `Team` (held for #486), `User` (held for #529) | 3 / held |
 

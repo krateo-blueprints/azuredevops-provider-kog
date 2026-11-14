@@ -13,7 +13,7 @@ The flow Phase 1 was verified with, against a live organisation:
 `GitRepository` → `GitPush` (initial commit) → `GitPush` (pipeline file) → `Pipeline`, plus a
 `PipelinePermission` on an environment.
 
-Prerequisites: [dev-cluster](../dev-cluster/README.md) (oasgen-provider 0.63.1, the chart and
+Prerequisites: [dev-cluster](../dev-cluster/README.md) (oasgen-provider 0.64.0, the chart and
 its RestDefinitions Ready), the config chart installed with `configurationName: azuredevops`, an
 existing project, and an existing environment for the last step.
 

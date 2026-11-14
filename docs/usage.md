@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.63.1, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.64.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.63.1 chart).
-- oasgen-provider **0.63.1**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.64.0 chart).
+- oasgen-provider **0.64.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -64,15 +64,16 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider to 0.63.1
+### Upgrading oasgen-provider to 0.64.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
 measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
-(2026-11-12) and 0.62.0 to 0.63.1 (2026-11-13). Larger jumps were not run on their own. What to
+(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13). Larger jumps were not run on
+their own. What to
 expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.63.1-692a993e…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.64.0-17803279…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -88,6 +89,15 @@ expect:
   would make it undeletable), but emits an `OrphanedExternalResourcePossible` Warning Event naming
   the resource. Alert on that reason. `TeamProject` closes the remaining window itself (it lists
   projects with `stateFilter=all`): in the measured trials no project was orphaned at any delay.
+- **New in 0.64.0:** the render service chart installed with the provider
+  (`controller-render-service`) no longer accepts `resources.limits.memory`. Setting it fails with
+  `additional properties 'memory' not allowed`; use `maxBodyMiB` instead (its default gives the same
+  512Mi limit). This chart sets neither. 0.64.0's new `Ready=False` handling for kinds that cannot
+  create does not apply here: all 25 kinds declare both a create and a get, checked on the live
+  RestDefinitions after the upgrade.
+- After a create or an update, a CR reports `Ready=False` (`Creating` or `Updating`) until its
+  controller's next poll, up to 3 minutes, even though Azure DevOps already has the change
+  (oasgen-provider#648, unchanged in 0.64.0). Allow at least that long when waiting for `Ready`.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat
@@ -125,7 +135,7 @@ in oasgen-provider#639.
 
 CRDs chart first, then the provider. **Forward only:** a CR reconciled by 0.57.0 is not supported
 by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are read, #545 removes the
-per-resource Secret Role). Then continue to 0.63.1 as above.
+per-resource Secret Role). Then continue to 0.64.0 as above.
 
 ## Migrating from the classic provider
 
