@@ -103,7 +103,9 @@ expect:
   changing the value inside a Secret that a `ServiceEndpoint*` CR references changed nothing at the
   vendor until something else in the CR changed. Now the controller fingerprints the Secrets it
   resolves and issues one update when they change. The four `ServiceEndpoint*` CRDs gain
-  `status.resolvedResolversDigest`, and their CRs report a `ResolverDigestRecorded` condition.
+  `status.resolvedResolversDigest`, and their CRs report a `ResolverDigestRecorded` condition. On
+  0.65.0 that condition disappears after a CR's first update and does not come back
+  (oasgen-provider#668); detection itself keeps working, so do not alert on its absence.
   Measured on Azure DevOps: recording the first digest issues no update; a rotation issues exactly
   one update, which Azure DevOps accepts, and no further one. Azure DevOps never returns secret
   values, so a test cannot read back the stored value itself. No other kind references a Secret.
