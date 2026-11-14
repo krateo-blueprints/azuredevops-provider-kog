@@ -11,6 +11,32 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-14 — oasgen-provider 0.65.0
+
+- Pin moved from 0.64.0 to 0.65.0, measured on disposable GKE clusters upgrading in place from
+  0.64.0 with chart 0.5.0. All 25 RestDefinitions regenerated with the expected stamp
+  (`0.65.0-c6c27537…`), with no reconciler errors and no provider restarts. A `GitRepository`
+  created on 0.64.0 kept its id. All 25 kinds still declare both a create and a get.
+- The 12 live suites ran 194 checks, and all 194 passed. Eleven suites ran in one run. The
+  `TeamProject` adoption suite was left out of it by mistake, so it ran on its own after the same
+  upgrade. It is now in the default suite list.
+- A Secret-name change restarted no controller. Adding and then removing an `rdc.env` key rolled
+  all 25 controllers each time. `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all
+  deleted at the vendor, before and after the upgrade. The status-field census filled every
+  declared field on all 25 kinds over 157 minutes.
+- New in 0.65.0: a rotated Secret value reaches Azure DevOps (oasgen-provider#598). Exactly the four
+  `ServiceEndpoint*` CRDs gained `status.resolvedResolversDigest`; the other 21 kinds reference no
+  Secret. This was predicted before the run. A dedicated test on a `ServiceEndpointToken` measured
+  outgoing calls with the controller's own request counter:
+  - recording the first digest sent no update;
+  - a rotation sent exactly one update, which Azure DevOps accepted, then none;
+  - with regeneration off, the old CRD reported `DigestFieldAbsent`, sent no update even after a
+    rotation, and the CR was written exactly once.
+  Azure DevOps never returns secret values, so the stored value itself cannot be read back.
+- oasgen-provider#663 (a `secretRef` inside an object the vendor echoes) does not affect this
+  chart: the four kinds converged after an update on 0.64.0 and 0.65.0, because the resolved secret
+  lands in the same object.
+
 ## 2026-11-14 — oasgen-provider 0.64.0
 
 - Pin moved from 0.63.1 to 0.64.0, measured on a disposable GKE cluster upgrading in place from
