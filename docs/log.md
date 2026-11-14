@@ -11,6 +11,26 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-14 — oasgen-provider 0.66.0
+
+- Pin moved from 0.65.0 to 0.66.0, measured on a disposable GKE cluster upgrading in place from
+  0.65.0 with chart 0.6.0. All 25 RestDefinitions regenerated with the expected stamp
+  (`0.66.0-a3e62546…`), with no reconciler errors and no provider restarts. A `GitRepository`
+  created on 0.65.0 kept its id. All 25 kinds still declare both a create and a get.
+- The 12 live suites ran 194 checks, and all 194 passed in one run. The run now also asserts how
+  many suites ran (12 of 12), so a suite can no longer be dropped silently.
+- A Secret-name change restarted no controller. Adding and then removing an `rdc.env` key rolled
+  all 25 controllers each time. `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all
+  deleted at the vendor, before and after the upgrade. The status-field census filled every
+  declared field on all 25 kinds over 163 minutes.
+- oasgen-provider#668 is fixed in 0.66.0, measured. On 0.65.0, `ResolverDigestRecorded` vanished
+  after a CR's first update. On 0.66.0, a dedicated test captured every write during a Secret
+  rotation: the condition stayed `True` in all of them, including the one that set
+  `Ready=False`/`Updating`. The test also repeated 0.65.0's results:
+  - from a pre-0.65.0 CRD: `DigestFieldAbsent` and no update;
+  - after regeneration: a rotation sends exactly one update, accepted by Azure DevOps, then none.
+- `Ready` returned 3 minutes after the rotation's update (oasgen-provider#648, unchanged).
+
 ## 2026-11-14 — oasgen-provider 0.65.0
 
 - Pin moved from 0.64.0 to 0.65.0, measured on disposable GKE clusters upgrading in place from
