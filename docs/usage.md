@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.65.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.66.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.65.0 chart).
-- oasgen-provider **0.65.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.66.0 chart).
+- oasgen-provider **0.66.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -64,17 +64,17 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider to 0.65.0
+### Upgrading oasgen-provider to 0.66.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
 measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
-(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), and 0.64.0 to 0.65.0 (2026-11-14).
+(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14).
 Larger jumps were not run on
 their own. What to
 expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.65.0-c6c27537…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.66.0-a3e62546…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -98,14 +98,14 @@ expect:
   RestDefinitions after the upgrade.
 - After a create or an update, a CR reports `Ready=False` (`Creating` or `Updating`) until its
   controller's next poll, up to 3 minutes, even though Azure DevOps already has the change
-  (oasgen-provider#648, unchanged in 0.65.0). Allow at least that long when waiting for `Ready`.
+  (oasgen-provider#648, unchanged in 0.66.0; measured: 3 minutes after an update). Allow at least that long when waiting for `Ready`.
 - **New in 0.65.0: a rotated Secret value now reaches Azure DevOps** (oasgen-provider#598). Before,
   changing the value inside a Secret that a `ServiceEndpoint*` CR references changed nothing at the
   vendor until something else in the CR changed. Now the controller fingerprints the Secrets it
   resolves and issues one update when they change. The four `ServiceEndpoint*` CRDs gain
   `status.resolvedResolversDigest`, and their CRs report a `ResolverDigestRecorded` condition. On
-  0.65.0 that condition disappears after a CR's first update and does not come back
-  (oasgen-provider#668); detection itself keeps working, so do not alert on its absence.
+  0.65.0 only, that condition disappears after a CR's first update and does not come back
+  (oasgen-provider#668, fixed in 0.66.0 and measured: the condition stays through a rotation's update).
   Measured on Azure DevOps: recording the first digest issues no update; a rotation issues exactly
   one update, which Azure DevOps accepts, and no further one. Azure DevOps never returns secret
   values, so a test cannot read back the stored value itself. No other kind references a Secret.
@@ -151,7 +151,7 @@ in oasgen-provider#639.
 
 CRDs chart first, then the provider. **Forward only:** a CR reconciled by 0.57.0 is not supported
 by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are read, #545 removes the
-per-resource Secret Role). Then continue to 0.65.0 as above.
+per-resource Secret Role). Then continue to 0.66.0 as above.
 
 ## Migrating from the classic provider
 
