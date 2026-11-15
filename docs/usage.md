@@ -138,25 +138,36 @@ expect:
   trials and **duplicated in none**: Azure DevOps held exactly one policy per CR every time.
 - **Known issue on 0.71.0, measured: a CR that loses that race is left without an id and needs a
   human.** The controller refuses to create again, which is what prevents the duplicate, but it
-  cannot find the object it made either: a kind without a `findby` has no way to look it up. The
-  object exists once in Azure DevOps and the CR does not reference it. The 15 forced trials ended
-  in one of two states:
+  cannot find the object it made either: the kind has no `findby` to look it up, and its `get` is
+  addressed by the id that was never recorded. The object exists once in Azure DevOps and the CR
+  does not reference it. The 15 forced trials ended in one of two states:
   - **14 of 15: `Ready=False` with reason `NoIdentifierRecorded`**, and `Synced=False` whose
-    message says the external resource "MAY EXIST and be unreferenced". Do not delete the CR to
-    clear it, because that orphans the object. According to oasgen-provider, the condition clears
-    when the identifier is written into the CR's status. This chart has not measured that remedy.
+    message says the external resource "MAY EXIST and be unreferenced".
   - **1 of 15: `Ready=False` with reason `Creating` and no message, indefinitely**, with
     `Synced=False` whose message starts `cannot determine creation result - remove the
     krateo.io/external-create-pending annotation if it is safe to proceed`. Only the `Synced`
     message tells it apart from an ordinary create, which also reads `Creating` for up to a poll
     (unstructured-runtime#93; a distinct `Ready` reason, `CreateOutcomeUnknown`, is decided
-    upstream but no oasgen-provider release carries it yet). Check Azure DevOps before removing
-    the annotation. What removing it does on a kind without a `findby` has not been measured here.
-  - **Avoid it:** do not let other field managers touch CRs of kinds without a `findby` until
-    they report an id in `status`.
+    upstream but no oasgen-provider release carries it yet).
+  - **Do not delete the CR** to clear either state, because that orphans the object. **Do not
+    remove the annotation by hand** either, despite what that message says.
+  - **Remedy, for both states: write the object's id into the field the kind's `get` reads.**
+    Find the object in Azure DevOps, then, for example:
+    `kubectl patch policystatus <name> --subresource=status --type=merge -p '{"status":{"id":<id>}}'`.
+    Write only that one field; the next observe reads the object and fills in the rest. For the
+    stuck state the runtime then records the create as succeeded itself, so the annotation never
+    needs touching. This is oasgen-provider's reading of the 0.71.0 source; **this chart has not
+    measured it yet**.
+  - **Exposure: 6 kinds**, those whose `get` is addressed by a field the create response fills in:
+    `status.id` on `PolicyStatus`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `CheckTask`
+    and `Run`, and `status.pushId` on `GitPush`. The other 4 kinds without a `findby`
+    (`FeedPermission`, `GroupMembership`, `PipelinePermission`, `RepositoryPermission`) build their
+    `get` from `spec`, so they are always addressable and cannot reach this state (the RestDefinitions
+    here, with oasgen-provider's reading of the source). The race was forced on `PolicyStatus` only.
+  - **Avoid it:** do not let other field managers touch CRs of those 6 kinds until they report an
+    id in `status`.
   - **Detect it:** a Warning Event with reason `ResourceCreated` whose message says the status
     "could not be written" marks every CR that lost the race. Then look for either state above.
-  - Exposure: the 10 kinds without a `findby`. The race was forced on `PolicyStatus` only.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat
