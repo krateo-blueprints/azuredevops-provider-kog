@@ -151,8 +151,7 @@ expect:
     message tells it apart from an ordinary create, which also reads `Creating` for up to a poll
     (unstructured-runtime#93; a distinct `Ready` reason, `CreateOutcomeUnknown`, is decided
     upstream but no oasgen-provider release carries it yet). Check Azure DevOps before removing
-    the annotation: on a kind without a `findby`, removing it while the object exists can create
-    a second one.
+    the annotation. What removing it does on a kind without a `findby` has not been measured here.
   - **Avoid it:** do not let other field managers touch CRs of kinds without a `findby` until
     they report an id in `status`.
   - **Detect it:** a Warning Event with reason `ResourceCreated` whose message says the status
