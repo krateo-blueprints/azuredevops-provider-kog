@@ -141,6 +141,7 @@ expect:
     `status`.
   - **Detect it:** a Warning Event with reason `ResourceCreated` whose message says the status
     "could not be written" marks an affected CR. Check Azure DevOps for extra objects.
+  - Tracked upstream as oasgen-provider#692.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat
