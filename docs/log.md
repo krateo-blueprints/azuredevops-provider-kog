@@ -11,6 +11,40 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-15 — oasgen-provider 0.71.0 (0.69.0 and 0.70.0 retracted)
+
+- Upstream retracted 0.69.0, which chart 0.8.0 pinned, and 0.70.0, both in favour of 0.71.0, for
+  the concurrent-write duplicate this chart measured (oasgen-provider#692). The `retracted-pin` job
+  refused the 0.69.0 pin on `main` until this change.
+- The forced-race probe on 0.70.0 (before the retraction): the race fired in 3 of 5 `PolicyStatus`
+  trials, and all 3 duplicated. The 2 trials where it did not fire stayed clean, which is the
+  control. Upstream traced that route to #347's retry branch and fixed it in 0.71.0 (#697).
+- Pin moved from 0.69.0 to 0.71.0 (0.70.0 skipped), measured on a disposable GKE cluster upgrading
+  in place from 0.69.0 with chart 0.8.0. All 25 RestDefinitions regenerated with the expected stamp
+  (`0.71.0-0fb3cbe1…`), with no reconciler errors and no provider restarts. A `GitRepository`
+  created on 0.69.0 kept its id.
+  - Live suites: 194/194 checks, 12 of 12 suites counted.
+  - A Secret-name change restarted no controller; an `rdc.env` add and remove rolled all 25
+    controllers each time.
+  - `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all deleted, on 0.69.0 and 0.71.0.
+  - The status-field census filled every declared field on all 25 kinds. The Ready census found no
+    CR "assumed up to date" and none `NoIdentifierRecorded` outside the probe (479 sampled Ready
+    conditions, all with a reason).
+- The forced race on 0.71.0, in two runs (a probe-only run, then the probe inside the full
+  regression): it fired in 15 of 15 trials (one Warning event each) and duplicated in none. Azure
+  DevOps held exactly one policy per CR. 14 CRs ended `Ready=False`/`NoIdentifierRecorded`. One
+  ended at a bare `Ready=False`/`Creating` with the cause only in `Synced` ("cannot determine
+  creation result"): its annotation write had lost a race too. Reported upstream as
+  unstructured-runtime#93, now decided as a distinct `Ready` reason (`CreateOutcomeUnknown`) that
+  no oasgen-provider release carries yet. Both states need a human, and usage documents them as a
+  known issue.
+- The full regression on 0.70.0 was invalidated: it ran concurrently with the 0.70.0 probe run, and
+  the two collided on fixed fixture names (10 failures in one suite). It was stopped between suites
+  and its cluster torn down; 0.70.0 was retracted before it could be rerun. Runs whose suites
+  overlap now run one at a time.
+- 0.72.0 is published (excludedSpecFields becomes mutable, oasgen-provider#666) and not yet
+  measured here. It is next.
+
 ## 2026-11-15 — oasgen-provider 0.69.0 (0.66.0 retracted)
 
 - Upstream retracted 0.66.0, which chart 0.7.0 pinned (oasgen-provider#674). The defect needs a
