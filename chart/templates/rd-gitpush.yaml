@@ -16,7 +16,7 @@ spec:
       - pushId
       - date
       - url
-    # The get operation's read options are not desired state. (Immutable list.)
+    # The get operation's read options are not desired state.
     excludedSpecFields:
       - includeCommits
       - includeRefUpdates

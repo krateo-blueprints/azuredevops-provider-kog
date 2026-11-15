@@ -79,6 +79,6 @@ fails the build.
 ## RestDefinition invariants (enforced in CI)
 
 - Every verb's query parameter is either excluded from the spec, bound by a `fieldMapping`, or
-  listed with a reason in `hack/render-check-allow.yaml` (`GitRepository.sourceRef`, a fork's create-time input, and `Queue.authorizePipelines`). `excludedSpecFields` is immutable once generated.
+  listed with a reason in `hack/render-check-allow.yaml` (`GitRepository.sourceRef`, a fork's create-time input, and `Queue.authorizePipelines`). Since oasgen-provider 0.72.0, `excludedSpecFields` can be edited (oasgen-provider#666): the provider re-renders the CRD on its next poll. That is still a schema change on every live cluster, so the check stays strict. Adding an entry prunes the field from the CRD, and a CR that still sets it is rejected on its next apply; according to upstream, the provider names it in `status.schemaWarnings` and a Warning event (#701). Removing an entry exposes the field again: 84 of this chart's 86 entries change the CRD when removed (measured on 0.72.0's renderer). The other two are PullRequest's branch filters, explained in their template.
 - The `kinds` enum in `values.schema.json` equals the kinds the templates guard and render.
 - Every `chart/assets/<kind>.yaml` equals what its recipe generates.

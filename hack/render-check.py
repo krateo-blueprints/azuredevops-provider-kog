@@ -7,8 +7,9 @@ gives the exact CRDs a cluster would get, so this check fails a PR on:
 
   1. any generation ERROR (severity "error": the controller would apply nothing);
   2. a query parameter of any verb surfacing as a spec field. oasgen merges the parameters of
-     EVERY verb into the spec (oasgen-provider#498), and excludedSpecFields is immutable once
-     generated, so a missed exclusion is a permanent wart. A query parameter bound by a verb's
+     EVERY verb into the spec (oasgen-provider#498). excludedSpecFields can be edited since
+     oasgen-provider 0.72.0 (#666), but fixing a missed exclusion later is a CRD change on every
+     live cluster, so it must hold before release. A query parameter bound by a verb's
      fieldMapping (inQuery) is not a spec field and is allowed;
   3. the kinds enum in values.schema.json disagreeing with the kinds the templates guard.
 
@@ -110,7 +111,7 @@ def main(rendered, chart_dir, url, config_rendered=None):
                     continue
                 if p["name"] in spec_fields:
                     failures.append(f"{kind}: query parameter '{p['name']}' of {verb['action']} is a spec field; "
-                                    "add it to excludedSpecFields (immutable: before the first release) or bind it")
+                                    "add it to excludedSpecFields (before release: a later edit changes every live CRD) or bind it")
 
     # 3. kinds enum == guarded kinds
     schema = json.load(open(os.path.join(chart_dir, "values.schema.json")))

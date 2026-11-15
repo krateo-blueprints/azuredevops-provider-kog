@@ -17,7 +17,7 @@ spec:
     additionalStatusFields:
       - id
       - version
-    # $expand is sent as a fixed query below, not desired state. (Immutable list.)
+    # $expand is sent as a fixed query below, not desired state.
     excludedSpecFields:
       - $expand
     compareScope: updatable

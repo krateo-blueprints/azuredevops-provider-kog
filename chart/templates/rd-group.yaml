@@ -20,7 +20,7 @@ spec:
       - originId
       - domain
     # Read options of the list operation and the create-time "also add to these groups" option,
-    # not desired state. scopeDescriptor stays: it is the scope the group lives in. (Immutable list.)
+    # not desired state. scopeDescriptor stays: it is the scope the group lives in.
     excludedSpecFields:
       - groupDescriptors
       - subjectTypes

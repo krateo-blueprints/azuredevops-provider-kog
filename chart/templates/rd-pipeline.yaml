@@ -23,7 +23,7 @@ spec:
       - queueStatus
     # Every query parameter of every verb is a read/clone option, not desired state; oasgen merges
     # them all into the spec (oasgen-provider#498), so all are excluded. `name` and `path` are bound
-    # by fieldMapping on findby and are therefore not separate spec fields. (Immutable list.)
+    # by fieldMapping on findby and are therefore not separate spec fields.
     excludedSpecFields:
       - definitionToCloneId
       - definitionToCloneRevision

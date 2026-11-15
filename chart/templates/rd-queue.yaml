@@ -17,7 +17,7 @@ spec:
       - id
       - projectId
       - pool.id
-    # Read options of the list and get operations. (Immutable list.) `authorizePipelines` is a
+    # Read options of the list and get operations. `authorizePipelines` is a
     # create-time input (authorize every pipeline to use the queue) and stays a spec field.
     excludedSpecFields:
       - actionFilter

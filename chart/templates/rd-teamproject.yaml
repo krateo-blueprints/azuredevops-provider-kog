@@ -19,7 +19,7 @@ spec:
       - revision
       - url
       - visibility
-    # Read options of the list and get operations, not desired state. (Immutable list.)
+    # Read options of the list and get operations, not desired state.
     excludedSpecFields:
       - stateFilter
       - $top
