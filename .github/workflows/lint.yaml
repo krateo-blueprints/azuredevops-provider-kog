@@ -31,7 +31,10 @@ jobs:
       - name: Controls
         run: |
           # rc 1 exactly: rc 2 (unreadable list) must not count as "refused".
-          rc=0; python3 hack/check-retracted.py --version 0.66.0 || rc=$?
+          # The refusal is the EXPECTED outcome here, so its ::error:: line is relabelled: it must not
+          # show as a failure annotation on a passing run.
+          rc=0; python3 hack/check-retracted.py --version 0.66.0 > control.out 2>&1 || rc=$?
+          sed 's/^::error::/control, refused as expected: /' control.out
           [ "$rc" = 1 ] || { echo "::error::control: 0.66.0 gave rc=$rc, expected 1 (refused)"; exit 1; }
           python3 hack/check-retracted.py --version 0.67.0 || { echo "::error::control: 0.67.0 was refused"; exit 1; }
       - name: The pinned version
