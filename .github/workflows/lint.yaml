@@ -9,11 +9,36 @@ on:
 env:
   # The oasgen-provider release the chart is built and live-tested against. oasgen-render ships in
   # this image; preflight-refs resolves this literal reference against the registry.
-  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.66.0
+  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.69.0
 
 jobs:
   lint-docs:
     uses: krateo-platformops/.github/.github/workflows/lint-docs.yaml@main
+
+  # Refuses a pin on an oasgen-provider version its publisher has retracted (their
+  # retracted-versions.yaml; installer enforces the same list, but this chart pins oasgen-provider
+  # directly). Two controls run first, so a check that cannot refuse, or refuses everything, fails
+  # here rather than passing silently: 0.66.0 (retracted by oasgen-provider#674) must be refused and
+  # 0.67.0 (its stated replacement) must pass. An unreadable list fails closed.
+  retracted-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Controls
+        run: |
+          # rc 1 exactly: rc 2 (unreadable list) must not count as "refused".
+          # The refusal is the EXPECTED outcome here, so its ::error:: line is relabelled: it must not
+          # show as a failure annotation on a passing run.
+          rc=0; python3 hack/check-retracted.py --version 0.66.0 > control.out 2>&1 || rc=$?
+          sed 's/^::error::/control, refused as expected: /' control.out
+          [ "$rc" = 1 ] || { echo "::error::control: 0.66.0 gave rc=$rc, expected 1 (refused)"; exit 1; }
+          python3 hack/check-retracted.py --version 0.67.0 || { echo "::error::control: 0.67.0 was refused"; exit 1; }
+      - name: The pinned version
+        run: python3 hack/check-retracted.py
 
   # Every chart/assets/<kind>.yaml is GENERATED from hack/oas-recipes/<kind>.yaml and Microsoft's
   # archived spec (pinned by SWHID). A hand edit, or a recipe change without regeneration, fails here.

@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.66.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.69.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.66.0 chart).
-- oasgen-provider **0.66.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.69.0 chart).
+- oasgen-provider **0.69.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -64,17 +64,17 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider to 0.66.0
+### Upgrading oasgen-provider to 0.69.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
 measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
-(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14).
+(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0 and 0.66.0 to 0.69.0 (2026-11-15).
 Larger jumps were not run on
 their own. What to
 expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.66.0-a3e62546…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.69.0-31069d35…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -98,7 +98,7 @@ expect:
   RestDefinitions after the upgrade.
 - After a create or an update, a CR reports `Ready=False` (`Creating` or `Updating`) until its
   controller's next poll, up to 3 minutes, even though Azure DevOps already has the change
-  (oasgen-provider#648, unchanged in 0.66.0; measured: 3 minutes after an update). Allow at least that long when waiting for `Ready`.
+  (oasgen-provider#648, unchanged in 0.69.0; measured: 3 minutes after an update). Allow at least that long when waiting for `Ready`.
 - **New in 0.65.0: a rotated Secret value now reaches Azure DevOps** (oasgen-provider#598). Before,
   changing the value inside a Secret that a `ServiceEndpoint*` CR references changed nothing at the
   vendor until something else in the CR changed. Now the controller fingerprints the Secrets it
@@ -114,6 +114,33 @@ expect:
   `ResolverDigestRecorded=False` (`DigestFieldAbsent`) and rotations are not detected, but nothing
   else changes: measured, the controller issued no update at all and wrote the CR once (the
   condition). Turn regeneration back on, or re-apply the RestDefinitions, to get detection.
+- **Do not use 0.66.0: upstream retracted it** (oasgen-provider#674: a kind that declares no
+  `create` verb writes an annotation about five times a second, forever). This chart is not
+  affected, because all 25 kinds declare `create` (checked on the live RestDefinitions), but chart
+  0.7.0, which pinned it, is superseded. This repository's CI now refuses a pin on any version
+  oasgen-provider lists as retracted.
+- **New in 0.68.0 and 0.69.0:**
+  - A create that reached Azure DevOps but whose status write failed is no longer reported as a
+    failed create and retried at once (oasgen-provider#676).
+  - A kind that declares `get` but has no identifier recorded now reports `Ready=False`
+    (`NoIdentifierRecorded`) instead of assuming it is up to date (oasgen-provider#682, #687).
+    All 10 kinds here without a `findby` declare `get`, so all 10 are covered. In the live suites
+    on 0.69.0 no CR reached that state, or the old "assumed up to date" one.
+- **Known issue on 0.69.0, measured: another writer on the CR during its create can duplicate the
+  Azure DevOps object** on a kind without a `findby` where Azure DevOps accepts duplicates.
+  The race was forced on `PolicyStatus`, which duplicated. Azure DevOps also accepts an identical
+  `CheckTask` or `Run` create twice (measured), so those are exposed the same way. The other kinds
+  without a `findby` were not exercised. Kinds with a `findby` that were tested
+  (`GitRepository`, `ServiceEndpointToken`) are protected, because Azure DevOps refuses a second
+  object with the same name.
+  - **What happens:** when a second field manager (a GitOps partial apply, or a controller adding
+    labels) updates the CR while it is being created, the status write that records the new id can
+    lose. The controller then creates again: 5 of 5 forced trials on `PolicyStatus` left 2 or 3
+    policies for one CR. Deleting the CR removes only the one it tracks, so the others are orphaned.
+  - **Avoid it:** do not let other field managers touch these CRs until they report an id in
+    `status`.
+  - **Detect it:** a Warning Event with reason `ResourceCreated` whose message says the status
+    "could not be written" marks an affected CR. Check Azure DevOps for extra objects.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat
@@ -151,7 +178,7 @@ in oasgen-provider#639.
 
 CRDs chart first, then the provider. **Forward only:** a CR reconciled by 0.57.0 is not supported
 by 0.56.0 again (oasgen-provider#544 changes how custom-resource paths are read, #545 removes the
-per-resource Secret Role). Then continue to 0.66.0 as above.
+per-resource Secret Role). Then continue to 0.69.0 as above.
 
 ## Migrating from the classic provider
 

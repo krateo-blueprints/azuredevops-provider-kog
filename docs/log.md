@@ -11,6 +11,37 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-15 — oasgen-provider 0.69.0 (0.66.0 retracted)
+
+- Upstream retracted 0.66.0, which chart 0.7.0 pinned (oasgen-provider#674). The defect needs a
+  kind without a `create` verb, and all 25 kinds here declare one, so the chart was not affected.
+  The 0.7.0 release notes now say it is superseded.
+- CI gained a `retracted-pin` job, `hack/check-retracted.py`. It reads oasgen-provider's
+  `retracted-versions.yaml` and refuses a pinned version on that list. An unreadable list fails
+  closed (rc 2). Two controls run first: 0.66.0 must be refused with exactly rc 1, and 0.67.0 must
+  pass.
+- Pin moved from 0.66.0 straight to 0.69.0 (0.68.0 was measured but not pinned), measured on a
+  disposable GKE cluster upgrading in place from 0.66.0 with chart 0.7.0. All 25 RestDefinitions
+  regenerated with the expected stamp (`0.69.0-31069d35…`), with no reconciler errors and no
+  provider restarts. A `GitRepository` created on 0.66.0 kept its id.
+  - Live suites: 194/194 checks, 12 of 12 suites counted.
+  - A Secret-name change restarted no controller; an `rdc.env` add and remove rolled all 25
+    controllers each time.
+  - `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all deleted, on 0.66.0 and 0.69.0.
+  - The status-field census filled every declared field on all 25 kinds.
+  - A new Ready census found no CR "assumed up to date" and none `NoIdentifierRecorded`, on any run
+    from 0.65.0 to 0.69.0. Every sampled Ready condition carried a reason, which is its control.
+- A new probe measured duplicate risk (oasgen-provider#676) by sending an identical create twice and
+  counting objects, with `Run` as the positive control. Azure DevOps accepts a duplicate
+  `PolicyStatus`, `CheckTask` and `Run`, and refuses one for `GitRepository` and
+  `ServiceEndpointToken` (409 on the name).
+- The same probe then forced the trigger: a second field manager wrote the CR during its create, so
+  the status write lost. On 0.69.0 this duplicated in 5 of 5 `PolicyStatus` trials (2 or 3 policies
+  per CR, the extras orphaned on delete). The trigger was proven by 6 Warning events and 6 log lines.
+  #687's refusal never appeared. Reported upstream and documented as a known issue. The first attempt
+  of this probe, on 0.68.0, was void: its `PolicyStatus` spec lacked a required field, so the CRs
+  never reached the controller.
+
 ## 2026-11-14 — oasgen-provider 0.66.0
 
 - Pin moved from 0.65.0 to 0.66.0, measured on a disposable GKE cluster upgrading in place from
