@@ -11,6 +11,27 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-16 — oasgen-provider 0.73.0
+
+- Pin moved from 0.72.0 to 0.73.0, measured on a disposable GKE cluster upgrading in place from
+  0.72.0 with chart 0.10.0. The run waited for all five release artifacts before starting. They
+  appeared about 40 minutes after the tag; a check 24 minutes in found none. All 25 RestDefinitions
+  regenerated with the expected stamp (`0.73.0-f5f438c5…`), with no reconciler errors. A
+  `GitRepository` created on 0.72.0 kept its id.
+  - Live suites: 194/194 checks, 12 of 12 suites counted. The five suites that walk a paginated
+    `findby` passed, but against this org every walk ends on page 1, so they show no regression in
+    0.73.0's rebuilt walk (#710), not that multi-page walks work.
+  - The Ready census counts 0.73.0's new `AssumedUpToDate` reason as well as the old message: 452
+    sampled conditions, none assumed in either form, none `NoIdentifierRecorded` outside the probe.
+    core-provider is not installed on these clusters, so nothing rolled the reason up.
+  - A Secret-name change restarted no controller; an `rdc.env` add and remove rolled all 25
+    controllers each time. `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all deleted,
+    on 0.72.0 and 0.73.0.
+- The forced race fired in 5 of 5 trials and duplicated in none; 25 of 25 across 0.71.0 to 0.73.0.
+  One trial reached the stuck state by itself (its create-succeeded annotation write lost, logged as
+  "cannot update managed resource annotations"). Writing its id into `status.id` cleared it with no
+  new create, as it did for the three refused CRs and one CR made stuck by hand; the control held.
+
 ## 2026-11-16 — oasgen-provider 0.72.0 (remedy for a CR left without an id, measured)
 
 - Pin moved from 0.71.0 to 0.72.0, measured on a disposable GKE cluster upgrading in place from
