@@ -146,6 +146,10 @@ expect:
   message, so match both when you alert. The live suites on 0.73.0 found 0 CRs in either form. The
   paginated `findby` walk was rebuilt (#710); the four kinds here that page (`TeamProject`,
   `Environment`, `Group`, `Pipeline`) passed their live suites, which only exercise a single page.
+  A separate run forced one project per page on `TeamProject` (a test-only `$top=1` on its
+  `findby`, 6 projects): adopting the project on page 1 cost 1 list request and the one on page 2
+  cost 2, so the walk stops on the matching page and keeps its query on later pages. Not measured:
+  a walk that finds nothing, and pages beyond 2.
 - **Known issue on 0.71.0 to 0.73.0, measured: a CR that loses that race is left without an
   id and needs a human.** The controller refuses to create again, which is what prevents the duplicate, but it
   cannot find the object it made either: the kind has no `findby` to look it up, and its `get` is

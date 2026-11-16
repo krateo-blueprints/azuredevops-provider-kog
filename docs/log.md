@@ -27,6 +27,12 @@ Curated history; release notes live in GitHub Releases.
   - A Secret-name change restarted no controller; an `rdc.env` add and remove rolled all 25
     controllers each time. `TeamProject`s deleted 0, 5, 15 and 30 s after creation were all deleted,
     on 0.72.0 and 0.73.0.
+- A paging run measured the rebuilt walk on a multi-page `continuationToken` list for the first
+  time: `TeamProject` with a test-only `$top=1` (6 projects, page order read twice and stable).
+  Adopting the project on page 1 cost exactly 1 list request, and on page 2 exactly 2, counted on
+  the controller's request metric for the list path only. So no over-paging after a match, and
+  `$top` survived onto page 2. A first attempt produced no data (a harness bug in a count
+  comparison) and was rerun.
 - The forced race fired in 5 of 5 trials and duplicated in none; 25 of 25 across 0.71.0 to 0.73.0.
   One trial reached the stuck state by itself (its create-succeeded annotation write lost, logged as
   "cannot update managed resource annotations"). Writing its id into `status.id` cleared it with no
