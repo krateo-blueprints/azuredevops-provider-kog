@@ -187,6 +187,38 @@ expect:
     id in `status`.
   - **Detect it:** a Warning Event with reason `ResourceCreated` whose message says the status
     "could not be written" marks every CR that lost the race. Then look for either state above.
+- **Known issue, measured on 0.74.0 and 0.75.0: a create whose response is lost is sent again,
+  and the extra objects are left untracked.** If Azure DevOps commits a create but the response
+  never reaches the controller (a network failure, or a request slower than its timeout), the
+  controller records the create as failed and sends the same POST again. Nothing checks first
+  whether the first one landed.
+  - **Measured on `Run`** (2026-11-16, disposable GKE clusters). The controller's request timeout
+    was set to the median POST latency, so roughly half the creates were cut.
+    - On 0.74.0, 3 of 4 trials where a POST timed out left 2 or 3 runs for one CR.
+    - On 0.75.0, 2 of 2 did, so 0.75.0's fix for this does not take effect in oasgen-provider's
+      controllers (oasgen-provider#746).
+    - Every affected CR ended `Ready=True` tracking only its **last** run. The earlier runs exist in
+      Azure DevOps and nothing on the cluster references them.
+    - Controls: a trial at the default timeout, and every trial whose POST did not time out, left
+      exactly one run.
+  - **0.73.0, which this release pins,** has the same runtime and create path as 0.74.0
+    (unstructured-runtime v1.18.0), so it is exposed the same way. It was not measured on 0.73.0
+    itself.
+  - **Exposure:** kinds where Azure DevOps accepts an identical create twice. That was measured for
+    `Run`, `PolicyStatus` and `CheckTask`. Kinds whose duplicate create Azure DevOps refuses, such
+    as `GitRepository` and `ServiceEndpointToken` (409 on the name), are protected.
+  - **When it happens:** only when a create's response is lost. With the default 30-second timeout,
+    that takes a network failure or a very slow create. The live suites have not hit it: the Run
+    suite asserts exactly one new run each time.
+  - **Detect it:** a CR carrying the `krateo.io/external-create-failed` annotation together with
+    `external-create-succeeded`, with a Warning Event `CannotCreateExternalResource` whose message
+    contains `making request:` (a transport error, not a refusal from Azure DevOps). Then list the
+    objects in Azure DevOps created around that time; any the CR's `status.id` does not name are
+    extras.
+  - **Clean up:** remove the extra objects in Azure DevOps. The CR keeps tracking the one in its
+    `status.id`.
+  - **Fix:** oasgen-provider#747, due in 0.76.0. This chart will move to it once it is released and
+    measured with the same test.
 
 Do not stop at **0.59.0**: there, an `rdc.env` change never reaches a running controller
 (oasgen-provider#599, fixed in 0.60.0). Moving back to an earlier version was not tested; treat

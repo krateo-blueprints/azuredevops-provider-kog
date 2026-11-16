@@ -11,6 +11,26 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-16 — a lost create response duplicates `Run` (measured); 0.74.0 and 0.75.0 not pinned
+
+- oasgen-provider 0.74.0 passed the full regression here: 194/194 checks, 12 of 12 suites, both
+  config arms clean, and the forced race at 0 duplicates (30 of 30 across 0.71.0 to 0.74.0). It was
+  not pinned, because 0.75.0 followed the same day.
+- A new arm makes a create's response get lost on purpose. It sets the controller's request timeout
+  (0.74.0's `REST_CONTROLLER_REQUEST_TIMEOUT`) to the median POST latency measured from inside the
+  cluster, then counts runs at Azure DevOps.
+  - On 0.74.0, 3 of 4 trials where a POST timed out left 2 or 3 runs for one CR.
+  - On 0.75.0, 2 of 2 did, so 0.75.0's fix does not reach these controllers (oasgen-provider#746).
+  - The CR tracked only the last run each time. Default-timeout controls left one run.
+  - Documented as a known issue for the current release, whose 0.73.0 has the same create path.
+    The pin moves when 0.76.0 (#747) is released and measured with the same arm.
+- The first design of that arm required a timeout above every GET and below every POST. The vendor's
+  latency ranges overlap, so the first run voided before any trial (no data). The bound was stricter
+  than needed: a timed-out read cannot cause a create.
+- The controller's request counter undercounted where a pod had been replaced: its series carries
+  the Deployment name as `service.instance.id`, so a new pod's count overwrote the old one. Runs
+  counted at the vendor were the measurement throughout. Reported upstream.
+
 ## 2026-11-16 — oasgen-provider 0.73.0
 
 - Pin moved from 0.72.0 to 0.73.0, measured on a disposable GKE cluster upgrading in place from
