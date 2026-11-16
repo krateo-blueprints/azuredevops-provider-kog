@@ -86,6 +86,27 @@ jobs:
             echo "$f lists $REPO_URL"
           done
 
+      # The lint gate (retracted-pin) read oasgen-provider's retracted-versions.yaml when lint RAN, which can be
+      # well before this tag: chart 0.11.0's lint read it at 08:42:11Z, five minutes before upstream changed it
+      # (2026-11-16). A version retracted in between would otherwise ship. So read the list again here, against
+      # the pin at THIS commit, with the same two controls as lint (0.66.0 refused with rc 1, 0.67.0 allowed). A
+      # retracted pin (rc 1) or an unreadable list (rc 2) refuses the release before GHCR holds anything.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: The pin is not retracted (the list read now, not at lint time)
+        run: |
+          set -uo pipefail
+          OASGEN_IMAGE=$(grep -oE 'ghcr\.io/krateo-platformops/oasgen-provider:[0-9]+\.[0-9]+\.[0-9]+' .github/workflows/lint.yaml | head -1)
+          [ -n "$OASGEN_IMAGE" ] || { echo "::error::cannot read the oasgen-provider pin from lint.yaml at this commit"; exit 1; }
+          export OASGEN_IMAGE; echo "pin at this commit: $OASGEN_IMAGE"
+          rc=0; python3 hack/check-retracted.py --version 0.66.0 > control.out 2>&1 || rc=$?
+          sed 's/^::error::/control, refused as expected: /' control.out
+          [ "$rc" = 1 ] || { echo "::error::control: 0.66.0 gave rc=$rc, expected 1 (refused)"; exit 1; }
+          python3 hack/check-retracted.py --version 0.67.0 || { echo "::error::control: 0.67.0 was refused"; exit 1; }
+          python3 hack/check-retracted.py
+
       # PUBLISHING.md rule 7: one token, no fallback. The publisher checks it can WRITE; a caller can only
       # check presence, so an unset secret stops the release before GHCR.
       - name: The index publish token is configured
