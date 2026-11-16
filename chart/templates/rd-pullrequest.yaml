@@ -24,10 +24,12 @@ spec:
     # bracket-escaped. The two branch filters are BOUND below from spec.sourceRefName/targetRefName and
     # also excluded here. Generators before 0.55.0 did not recognise a bracket-escaped inQuery as
     # supplying its parameter, so they surfaced as duplicate spec fields (oasgen-provider#514, fixed
-    # in 0.55.0: verified that the spec stays clean without these two entries). They are now
-    # redundant but correct, and stay because this list is append-only once released. The runtime
+    # in 0.55.0). On oasgen-provider 0.72.0 these two entries change neither the generated CRD nor
+    # the renderer's messages (measured 2026-11-15, each rendered with and without itself, with
+    # controls): the binding alone keeps them out of the spec, and a bracket-escaped entry does not
+    # yet silence the "supplied by a fieldMapping" warning (oasgen-provider#706). They stay because
+    # removing them would change the RestDefinition, and so re-render it, for no gain. The runtime
     # binding was never affected: the findby request carries both filters (verified on the wire).
-    # (Immutable list.)
     excludedSpecFields:
       - supportsIterations
       - maxCommentLength

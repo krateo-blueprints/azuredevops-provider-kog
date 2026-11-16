@@ -22,7 +22,7 @@ spec:
       - url
     # The findby list operation's optional query parameters are read options, not desired state,
     # yet oasgen-provider 0.54.0 merges them into the spec (measured on the first render). They
-    # are excluded so a CR carries only what the user decides. (Immutable list.)
+    # are excluded so a CR carries only what the user decides.
     excludedSpecFields:
       - includeAllUrls
       - includeHidden

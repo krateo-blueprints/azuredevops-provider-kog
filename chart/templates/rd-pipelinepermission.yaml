@@ -13,7 +13,7 @@ spec:
     # knows up front, so `get` observes from the first reconcile and no findby is needed.
     #
     # `resource` in the body duplicates the path and is server-echoed; excluding it keeps the
-    # spec to what the user decides: allPipelines and per-pipeline grants. (Immutable list.)
+    # spec to what the user decides: allPipelines and per-pipeline grants.
     excludedSpecFields:
       - resource
     additionalStatusFields:

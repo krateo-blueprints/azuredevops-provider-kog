@@ -11,6 +11,41 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-16 — oasgen-provider 0.72.0 (remedy for a CR left without an id, measured)
+
+- Pin moved from 0.71.0 to 0.72.0, measured on a disposable GKE cluster upgrading in place from
+  0.71.0 with chart 0.9.0. As far as we know this was the first cluster run of 0.72.0 anywhere. All
+  25 RestDefinitions regenerated with the expected stamp (`0.72.0-c26413da…`), with no reconciler
+  errors and no provider restarts. A `GitRepository` created on 0.71.0 kept its id.
+  - Live suites: 194/194 checks, 12 of 12 suites counted.
+  - The status-field census filled every declared field on all 25 kinds. The Ready census found no
+    CR "assumed up to date" and none `NoIdentifierRecorded` outside the probe (463 sampled Ready
+    conditions, all with a reason).
+  - `TeamProject`s deleted 0, 5 and 15 s after creation were all deleted, on 0.71.0 and 0.72.0. The
+    30 s trial on 0.72.0 does not count: its id was already recorded when the delete was issued.
+- The forced race on 0.72.0 fired in 5 of 5 trials and duplicated in none, and all 5 ended
+  `NoIdentifierRecorded`. With 0.71.0 that is 20 of 20, 0 duplicates.
+- **The remedy for a CR left without an id is now measured**, not only oasgen-provider's reading of
+  the source. Writing the vendor id into `status.id` brought 3 refused CRs and 1 CR put into the
+  stuck state by hand (by removing only its create-succeeded annotation) to `Ready=True` within one
+  poll. The id stayed the same, Azure DevOps still held one policy per CR, and no create followed.
+  For the stuck CR the runtime set the create-succeeded annotation again itself. A control CR left
+  untouched stayed `NoIdentifierRecorded`.
+- **Three harness scripts disappeared from the run's working directory mid-run** (cause unknown).
+  Because of that, the `rdc.env` arm printed nothing instead of failing, and the closing digest
+  check could not run. The scripts were rebuilt from the session history, the runner now refuses to
+  start if a script it calls is missing (tested), and both arms ran again on a second cluster
+  upgrading 0.71.0 to 0.72.0. A Secret-name change restarted no controller, and an `rdc.env` add
+  and remove rolled all 25 controllers each time.
+- `excludedSpecFields` can be edited from 0.72.0 (oasgen-provider#666). Rendered on 0.72.0, 84 of
+  this chart's 86 entries change the CRD when removed. The other two, PullRequest's bracket-escaped
+  branch filters, change nothing, because the findby binding already keeps them out of the spec. A
+  positive control showed that plain entries do silence the "supplied by a fieldMapping" notice,
+  and the bracket form does not (filed upstream as oasgen-provider#706). They stay, with their
+  comment corrected.
+- On 0.72.0, `status.schemaWarnings` already lists routine notices on 23 of 25 RestDefinitions, so
+  an alert must match a specific message rather than a non-empty list.
+
 ## 2026-11-15 — oasgen-provider 0.71.0 (0.69.0 and 0.70.0 retracted)
 
 - Upstream retracted 0.69.0, which chart 0.8.0 pinned, and 0.70.0, both in favour of 0.71.0, for

@@ -9,7 +9,7 @@ on:
 env:
   # The oasgen-provider release the chart is built and live-tested against. oasgen-render ships in
   # this image; preflight-refs resolves this literal reference against the registry.
-  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.71.0
+  OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.72.0
 
 jobs:
   lint-docs:
@@ -58,8 +58,8 @@ jobs:
       - run: python3 hack/trim-oas.py --check .specs hack/oas-recipes chart/assets
 
   # Renders every RestDefinition through oasgen-provider's own generator (oasgen-render) and fails
-  # on generation errors, on verb query parameters leaking into a spec (excludedSpecFields is
-  # immutable, so this must hold before release), on kinds enum / template guard drift, and on
+  # on generation errors, on verb query parameters leaking into a spec (fixing one later is a CRD
+  # change on every live cluster, so this must hold before release), on kinds enum / template guard drift, and on
   # config-chart objects that do not match the generated Configuration CRDs.
   render-check:
     runs-on: ubuntu-latest

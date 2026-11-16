@@ -11,7 +11,7 @@ spec:
     kind: FeedPermission
     # The assignment IS the (feed, identity) pair, both from the spec, so get addresses it directly
     # and an existing assignment is adopted on the first observe. No identifiers, no findby.
-    # Read options of the read, not desired state. (Immutable list.)
+    # Read options of the read, not desired state.
     excludedSpecFields:
       - includeIds
       - excludeInheritedPermissions

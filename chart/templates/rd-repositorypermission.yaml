@@ -11,7 +11,7 @@ spec:
     kind: RepositoryPermission
     # The entry IS the (token, identity) pair, both derived from spec fields, so get addresses it
     # directly and an existing entry is adopted on the first observe. No identifiers, no findby.
-    # Read options of the list read, not desired state. (Immutable list.)
+    # Read options of the list read, not desired state.
     excludedSpecFields:
       - includeExtendedInfo
       - recurse

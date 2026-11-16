@@ -18,7 +18,7 @@ spec:
       - isReady
     # `AccessToken` is written by the secretRef resolver from AccessTokenSecretRef; excluding it from the
     # spec means a cleartext secret cannot be put in a CR at all. `operation` (PUT) and `deep`
-    # (DELETE) are request options, not desired state. (Immutable list.)
+    # (DELETE) are request options, not desired state.
     excludedSpecFields:
       - authorization.parameters.AccessToken
       - operation

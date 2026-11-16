@@ -22,7 +22,7 @@ spec:
       - url
       - createdDate
       - finishedDate
-    # Version of the pipeline definition to run, a create-time read option. (Immutable list.)
+    # Version of the pipeline definition to run, a create-time read option.
     excludedSpecFields:
       - pipelineVersion
     # A run is immutable once started: compare nothing from the spec.
