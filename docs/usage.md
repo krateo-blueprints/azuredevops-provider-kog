@@ -157,7 +157,7 @@ expect:
     express (#725). The live suites on 0.74.0 and 0.76.0 raised 20 of them, on 10 kinds. Nothing
     failed. The warning says an update "would DELETE" those keys, but it cannot know whether a given
     Azure DevOps endpoint deletes an omitted key or keeps it (oasgen-provider#757). This was measured
-    against Azure DevOps directly on four of the kinds. Each key was first set to a non-default value,
+    against Azure DevOps directly on seven of the kinds. Each author-set key was first set to a non-default value,
     then the object was sent an update shaped like the controller's that left the key out, using the
     chart's own update verb. A field the CR does set was changed in the same update, to prove the
     update applied:
@@ -166,20 +166,23 @@ expect:
     |---|---|---|---|
     | `PolicyStatus`, `PolicyBuildValidation`, `PolicyRequiredReviewers` | `type.displayName`, `type.url` | kept | ignore |
     | `CheckApproval` | `resource.name` | kept | ignore |
+    | `Pipeline` | `repository.name`, `repository.url` | kept | ignore |
+    | `PipelinePermission` | `allPipelines.authorizedBy`, `allPipelines.authorizedOn` | kept (both values identical after the update) | ignore |
     | `PolicyRequiredReviewers` | `settings.creatorVoteCounts` | kept (`true` stayed `true`) | ignore |
     | `PolicyBuildValidation` | `settings.manualQueueOnly` | **reset** (`true` became `false`) | set it in the CR |
     | `PolicyRequiredReviewers` | `settings.minimumApproverCount` | **reset** (`2` became `1`) | set it in the CR |
     | `CheckApproval` | `settings.blockedApprovers` | **reset** (one approver became none) | set it in the CR |
+    | `Pipeline` | `repository.checkoutSubmodules` | **reset** (`true` became `false`) | set it in the CR |
+    | `Pipeline` | `repository.clean` | **reset** (`"true"` became unset) | set it in the CR |
+    | `ServiceEndpointServicePrincipal` | `data.identityType` | not removed (`AppRegistrationManual` stayed). Azure DevOps assigns this value, so it could not be set to a non-default first: a reset to its default would look the same | probably ignore; not proven safe |
 
-    So the keys Azure DevOps fills in itself were kept, and three settings an author would set were
-    reset to their defaults. A "reset" key matters only if its value was set outside the CR, for
+    So every key Azure DevOps fills in itself was kept, and five of the six settings an author would
+    set were reset to their defaults (`creatorVoteCounts` was the exception, so there is no rule that
+    predicts which settings survive). A "reset" key matters only if its value was set outside the CR, for
     example in the Azure DevOps UI: the next update the controller sends puts it back to the default.
     Setting the key in the CR avoids that.
 
-    **Not measured yet:** `Pipeline` (`repository: checkoutSubmodules, clean, name, url`),
-    `PipelinePermission` (`allPipelines: authorizedBy, authorizedOn`) and
-    `ServiceEndpointServicePrincipal` (`data: identityType`). Treat those warnings as a prompt to check.
-    `CheckExclusiveLock`, `CheckRequiredTemplate` and `CheckTask` warn only on `resource.name`. They use
+    **Not measured:** `CheckExclusiveLock`, `CheckRequiredTemplate` and `CheckTask` warn only on `resource.name`. They use
     the same endpoint as `CheckApproval`, where it was kept, but were not measured themselves.
   - The provider gains a ClusterRole for its status backfill. On an upgrade into 0.74.0 or later its
     first pass can log a short-lived permission Warning per kind. The live runs did not capture
