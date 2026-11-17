@@ -17,8 +17,14 @@ Curated history; release notes live in GitHub Releases.
   `PolicyRequiredReviewers`, `CheckApproval`). Of 9 warned keys, 6 were kept by an update that left
   them out and 3 were reset to their defaults: `manualQueueOnly`, `minimumApproverCount` and
   `blockedApprovers`. Every key Azure DevOps fills in itself (`type.*`, `resource.name`) was kept.
-  usage.md now lists which warnings to act on. `Pipeline`, `PipelinePermission` and
-  `ServiceEndpointServicePrincipal` are not measured yet.
+  usage.md now lists which warnings to act on.
+- A second run measured `Pipeline`, `PipelinePermission` and `ServiceEndpointServicePrincipal`.
+  `repository.checkoutSubmodules` and `repository.clean` were reset. `repository.name`,
+  `repository.url` and `allPipelines.authorizedBy` / `authorizedOn` were kept; the last was not
+  re-stamped by the update. `data.identityType` was not removed, but Azure DevOps assigns it, so a
+  reset to its default could not be seen. The classification rules for those two rows were written
+  down before the results were read. Totals across seven kinds: 16 key rows, 10 kept, 5 reset, 1
+  not removed. The three other Check kinds are still unmeasured.
 - Method: each key was set to a non-default value before the update, and the same update changed a
   field the CR does set, to show it applied. Two earlier attempts had harness bugs and are not used:
   one sent the check update with PUT instead of the chart's PATCH, and one used an approver setup
