@@ -11,6 +11,36 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-17 — oasgen-provider 0.76.0 (a lost create response no longer duplicates)
+
+- Pin moved from 0.73.0 straight to 0.76.0, skipping 0.74.0 and 0.75.0. It was measured on a
+  disposable GKE cluster upgrading in place across both in one step, which is the path users of
+  chart 0.11.0 take. All 25 RestDefinitions regenerated with the expected stamp
+  (`0.76.0-74dbdeba…`), with no reconciler errors. A `GitRepository` created on 0.73.0 kept its id.
+  - Live suites: 194/194 checks. 11 of 12 suites passed in run 076. Its smoke-perms results are
+    void because the harness lost a helper script mid-suite; the suite was rerun alone on a fresh
+    cluster with the same upgrade and passed 17/17.
+  - The Ready census found nothing assumed up to date and nothing `NoIdentifierRecorded` outside the
+    probe (455 conditions). A Secret-name change restarted no controller; an `rdc.env` add and remove
+    rolled all 25 each time. `TeamProject`s deleted 0 to 30 s after creation were all deleted.
+  - The forced race fired 5 of 5 with 0 duplicates, 35 of 35 across 0.71.0 to 0.76.0.
+- The lost-response arm, unchanged across three releases, shows the fix landing:
+  - on 0.74.0, 3 of 4 triggered trials re-sent the create;
+  - on 0.75.0, 2 of 2 did (its fix did not reach these controllers);
+  - on 0.76.0, the one triggered trial created once and stopped at `CreateOutcomeUnknown`.
+
+  Writing the run's id into `status.id` cleared that CR in about 3 minutes with no new create, which
+  was checked against the vendor's run ids. That arm's own verdict line first said otherwise because
+  of a counting bug in the harness, since fixed.
+- `UnmodelledKeysWouldBeRemoved` (from 0.74.0) raised the same 20 warnings on 10 kinds on 0.74.0 and
+  0.76.0, now with full key lists. Upstream has since noted that the warning cannot tell whether an
+  endpoint deletes an omitted key, so the docs present it as a prompt to check.
+- Skip 0.77.0: oasgen-provider#758 leaves a findby kind whose create did not land reporting
+  `Creating` indefinitely. This is upstream's reading, not measured here.
+- The harness lost scripts from its working directory a second time (cause still unknown). The suite
+  runner now checks each suite's scripts before and after it runs, and marks a suite void if one
+  vanished, instead of reporting its failures.
+
 ## 2026-11-16 — a lost create response duplicates `Run` (measured); 0.74.0 and 0.75.0 not pinned
 
 - oasgen-provider 0.74.0 passed the full regression here: 194/194 checks, 12 of 12 suites, both
