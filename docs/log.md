@@ -11,6 +11,22 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-17 — which `UnmodelledKeysWouldBeRemoved` warnings are real
+
+- Measured against Azure DevOps on four kinds (`PolicyStatus`, `PolicyBuildValidation`,
+  `PolicyRequiredReviewers`, `CheckApproval`). Of 9 warned keys, 6 were kept by an update that left
+  them out and 3 were reset to their defaults: `manualQueueOnly`, `minimumApproverCount` and
+  `blockedApprovers`. Every key Azure DevOps fills in itself (`type.*`, `resource.name`) was kept.
+  usage.md now lists which warnings to act on. `Pipeline`, `PipelinePermission` and
+  `ServiceEndpointServicePrincipal` are not measured yet.
+- Method: each key was set to a non-default value before the update, and the same update changed a
+  field the CR does set, to show it applied. Two earlier attempts had harness bugs and are not used:
+  one sent the check update with PUT instead of the chart's PATCH, and one used an approver setup
+  Azure DevOps rejects (`minimumApproverCount` needs a single group reviewer, TF402457). The first of
+  them left two test policies behind. They were deleted, and 0 remain.
+- Chart 0.12.0 was released on oasgen-provider 0.76.0. The release-time retracted-version check ran
+  for the first time on it and passed.
+
 ## 2026-11-17 — oasgen-provider 0.76.0 (a lost create response no longer duplicates)
 
 - Pin moved from 0.73.0 straight to 0.76.0, skipping 0.74.0 and 0.75.0. It was measured on a
