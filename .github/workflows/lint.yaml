@@ -12,8 +12,15 @@ env:
   OASGEN_IMAGE: ghcr.io/krateo-platformops/oasgen-provider:0.76.0
 
 jobs:
+  # krateo-blueprints/charts PUBLISHING.md rule 9: every reusable workflow this repository calls is pinned by
+  # commit SHA with a version comment. The shared check refuses any that is not.
+  pinned-uses:
+    permissions:
+      contents: read
+    uses: krateo-blueprints/charts/.github/workflows/pinned-uses.yaml@33c79510d5042e0fcb5227176bd138d993cb4ef6 # 1.2.0
+
   lint-docs:
-    uses: krateo-platformops/.github/.github/workflows/lint-docs.yaml@main
+    uses: krateo-platformops/.github/.github/workflows/lint-docs.yaml@f25d6b526bde39f37bca6a4eb8c493bf4c2bbec1 # main 2026-11-17
 
   # Refuses a pin on an oasgen-provider version its publisher has retracted (their
   # retracted-versions.yaml; installer enforces the same list, but this chart pins oasgen-provider
