@@ -15,18 +15,22 @@ One annotated, plain-semver tag (`X.Y.Z`, no `v`) on `main` releases everything.
 every chart is published twice, with the same bytes, because the Marketplace installs from the
 helm index, not from GHCR.
 
-1. **`preflight`** refuses the release before anything is published if the tag is not plain
-   semver, if the tagged commit has no successful `lint.yaml` run (which includes
-   `oas-assets-fresh` and `render-check`), or if `CHARTS_PUBLISH_TOKEN` is not configured.
-2. **`release-oci`** (the org's shared workflow) stamps `CHART_VERSION` (both `version` and `appVersion`), discovers `chart/` and
+1. **`preflight`** refuses the release before anything is published if the tagged commit has no
+   successful `lint.yaml` run (which includes `oas-assets-fresh` and `render-check`), or if
+   `CHARTS_PUBLISH_TOKEN` is not configured.
+2. **`release-preflight`** (the organisation's shared check, `release-preflight.yaml`, pinned by
+   commit SHA) refuses a version that is not plain `X.Y.Z`: no `v`, no leading zeros, no
+   pre-release or build suffix. `publish-chart` would refuse such a version only at index time,
+   after the GHCR push.
+3. **`release-oci`** (the org's shared workflow) stamps `CHART_VERSION` (both `version` and `appVersion`), discovers `chart/` and
    `config-chart/`, packages both and pushes them to `oci://ghcr.io/krateo-blueprints/charts`.
    It refuses to replace a published version whose contents differ, and skips one whose contents
    are identical.
-3. **`collect`** pulls both charts back from GHCR and uploads them as the `charts-dist` artifact.
+4. **`collect`** pulls both charts back from GHCR and uploads them as the `charts-dist` artifact.
    That guarantees the index gets exactly the bytes GHCR holds (`helm package` writes fresh
    timestamps, and a skipped push means the local archive was never published). It asserts the
    artifact holds exactly the two charts, each with `version` and `appVersion` equal to the tag.
-4. **`publish-index`** calls the organisation's publisher, `publish-chart.yaml`, pinned by commit
+5. **`publish-index`** calls the organisation's publisher, `publish-chart.yaml`, pinned by commit
    SHA (kept current by Dependabot), with `channel: operators`: neither chart ships a
    CompositionDefinition. The publisher stores the archives, merges the index, and succeeds only
    once `https://krateo-blueprints.github.io/charts/operators/index.yaml` lists both charts and
