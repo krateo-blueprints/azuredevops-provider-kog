@@ -76,7 +76,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyyaml
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - name: Start oasgen-render
         run: |
           docker run -d --name oasgen-render -p 8081:8081 --entrypoint /bin/oasgen-render "$OASGEN_IMAGE"
