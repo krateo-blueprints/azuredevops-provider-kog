@@ -42,10 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           v="${INPUT_VERSION:-$REF_NAME}"
-          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::chart version '$v' is not plain semver. Run on a release tag, or pass chart_version."
-            exit 1
-          fi
+          # Its shape (plain X.Y.Z, PUBLISHING.md rule 13) is checked by the release-preflight job below.
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
       # PUBLISHING.md rule 10: THIS commit must have a concluded, successful run of lint.yaml (which runs
@@ -118,8 +115,20 @@ jobs:
             exit 1
           fi
 
-  release-oci:
+  # PUBLISHING.md rule 12: the shared release preflight refuses a version that is not plain X.Y.Z before
+  # anything is pushed (publish-chart would otherwise refuse it only at index time, after the GHCR push).
+  release-preflight:
     needs: preflight
+    uses: krateo-blueprints/charts/.github/workflows/release-preflight.yaml@70095ab05f1c5dc6c8dd39d0b1fdbbc7382a841c # 1.4.3
+    permissions:
+      contents: read
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+
+  release-oci:
+    needs:
+      - preflight
+      - release-preflight
     uses: krateo-platformops/.github/.github/workflows/release-oci.yaml@e1d3e99215e80ae56eca4a67e9e061b2c73168b8 # 1.0.0
     permissions:
       contents: read
@@ -186,7 +195,7 @@ jobs:
   # token, so a movable ref would let whoever moves it run code with that token. Dependabot keeps it current.
   publish-index:
     needs: [preflight, collect]
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@aea92de356085f50ea45477a4e6ae2b026cd6b14 # 1.4.2
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@70095ab05f1c5dc6c8dd39d0b1fdbbc7382a841c # 1.4.3
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ needs.preflight.outputs.version }}
