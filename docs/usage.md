@@ -127,8 +127,9 @@ expect:
   - A kind that declares `get` but has no identifier recorded now reports `Ready=False`
     (`NoIdentifierRecorded`) instead of assuming it is up to date (oasgen-provider#682, #687).
     All 10 kinds here without a `findby` declare `get`, so all 10 are covered. In the live suites
-    from 0.71.0 to 0.76.0 no CR reached that state, or the old "assumed up to date" one
-    (between 451 and 479 sampled `Ready` conditions per run, every one with a reason).
+    from 0.71.0 to 0.76.0, and on 0.84.0, no CR reached that state, or the old "assumed up to date"
+    one (between 451 and 479 sampled `Ready` conditions per run up to 0.76.0, and 1293 across the
+    two 0.84.0 runs, every one with a reason).
 - **Fixed in 0.71.0, measured: another writer on the CR during its create no longer duplicates
   the Azure DevOps object** (oasgen-provider#692; fixed by #693 in 0.70.0 and #697 in 0.71.0).
   On 0.69.0, when a second field manager (a GitOps partial apply, or a controller adding labels)
