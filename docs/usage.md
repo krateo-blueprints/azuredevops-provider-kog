@@ -243,7 +243,7 @@ expect:
   - The provider gains a ClusterRole for its status backfill. On an upgrade into 0.74.0 or later its
     first pass can log a short-lived permission Warning per kind. The live runs did not capture
     those events, so they are not counted here.
-- **Known issue on 0.71.0 to 0.76.0, measured: a CR that loses that race is left without an
+- **Known issue from 0.71.0, measured through 0.76.0 (the race was not re-run on 0.84.0): a CR that loses that race is left without an
   id and needs a human.** The controller refuses to create again, which is what prevents the duplicate, but it
   cannot find the object it made either: the kind has no `findby` to look it up, and its `get` is
   addressed by the id that was never recorded. The object exists once in Azure DevOps and the CR
@@ -287,7 +287,7 @@ expect:
   recorded the create as failed and sent the same POST again. On kinds where Azure DevOps accepts an
   identical create (`Run`, `PolicyStatus`, `CheckTask`, measured), that left extra objects, and the CR
   tracked only the last.
-  - **Measured on `Run`** (2026-11-16, disposable GKE clusters). The controller's request timeout was
+  - **Measured on `Run`** (2026-11-16 and, for 0.84.0, 2026-11-21; disposable GKE clusters). The controller's request timeout was
     set to the median POST latency, so roughly half the creates were cut:
 
     | oasgen-provider | Trials where a POST timed out | Re-sent | Runs for one CR |
@@ -295,24 +295,25 @@ expect:
     | 0.74.0 | 4 | 3 | 2, 3, 2 |
     | 0.75.0 | 2 | 2 | 2, 2 (0.75.0's fix did not take effect, oasgen-provider#746) |
     | 0.76.0 | 1 | 0 | 1 |
+    | 0.84.0 | 6 | 0 | 1, 1, 1, 1, 1, 1 |
 
     Controls: a trial at the default timeout, and every trial whose POST did not time out, left exactly
     one run. 0.73.0 has the same create path as 0.74.0 and was not measured separately.
-  - **What happens instead on 0.76.0, for a kind with no `findby`:** the controller cannot check
+  - **What happens instead from 0.76.0 (measured on 0.76.0 and 0.84.0), for a kind with no `findby`:** the controller cannot check
     whether the create landed, so it stops and waits. The CR shows `Ready=False` with reason
     `CreateOutcomeUnknown`, carries only the `krateo.io/external-create-pending` annotation, and its
     `Synced` message says `cannot determine creation result … this kind declares no findby verb`. The
     object exists once in Azure DevOps. Exposed: the same 6 kinds as the race above, whose `get`
     reads `status.id` or `status.pushId`.
-  - **Remedy, measured on 0.76.0:** find the object in Azure DevOps, write its id into the field the
+  - **Remedy, measured on 0.76.0 (1 CR) and 0.84.0 (6 of 6 CRs, each `Ready=True` about 3 minutes later with no new run):** find the object in Azure DevOps, write its id into the field the
     `get` reads, and wait one poll. For example:
     `kubectl patch runs.azuredevops.krateo.io <name> --subresource=status --type=merge -p '{"status":{"id":<id>}}'`.
     The patch must use `--subresource=status`; without it the API server accepts the patch and drops
     the status. On the measured CR, `Ready=True` followed about 3 minutes later with the same id. The
-    controller added `external-create-succeeded` itself, and no new run was created. One CR; the
-    vendor's run ids were checked.
-  - **Do not remove the `krateo.io/external-create-pending` annotation**, whatever the `Synced`
-    message suggests. On 0.76.0, removing it alone made the controller create again in the same
+    controller added `external-create-succeeded` itself, and no new run was created. One CR on 0.76.0
+    and six on 0.84.0; the vendor's run ids were checked each time.
+  - **When the object exists, do not remove the `krateo.io/external-create-pending` annotation**,
+    whatever the `Synced` message suggests. On 0.76.0, removing it alone made the controller create again in the same
     second, and the existing object was left untracked. This was measured by github-provider-kog on
     GitHub (krateo-blueprints/github-provider-kog#95), not on this chart.
   - **Skip 0.77.0.** On 0.77.0 only, a kind *with* a `findby` whose create did not land (its list
