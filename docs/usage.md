@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.76.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.84.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.76.0 chart).
-- oasgen-provider **0.76.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.84.0 chart).
+- oasgen-provider **0.84.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -64,17 +64,17 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider to 0.76.0
+### Upgrading oasgen-provider to 0.84.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
 measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
-(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0, 0.66.0 to 0.69.0 and 0.69.0 to 0.71.0 (2026-11-15), 0.71.0 to 0.72.0 and 0.72.0 to 0.73.0 (2026-11-16), 0.73.0 to 0.74.0 and 0.73.0 to 0.76.0 in one step (2026-11-17).
+(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0, 0.66.0 to 0.69.0 and 0.69.0 to 0.71.0 (2026-11-15), 0.71.0 to 0.72.0 and 0.72.0 to 0.73.0 (2026-11-16), 0.73.0 to 0.74.0 and 0.73.0 to 0.76.0 in one step (2026-11-17), 0.76.0 to 0.84.0 in one step (2026-11-21).
 Larger jumps were not run on
 their own. What to
 expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.76.0-74dbdeba…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.84.0-de67f828…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -98,7 +98,7 @@ expect:
   RestDefinitions after the upgrade.
 - After a create or an update, a CR reports `Ready=False` (`Creating` or `Updating`) until its
   controller's next poll, up to 3 minutes, even though Azure DevOps already has the change
-  (oasgen-provider#648, unchanged in 0.76.0; measured: 3 minutes after an update). Allow at least that long when waiting for `Ready`.
+  (oasgen-provider#648, measured on 0.76.0: 3 minutes after an update; not re-measured on 0.84.0). Allow at least that long when waiting for `Ready`.
 - **New in 0.65.0: a rotated Secret value now reaches Azure DevOps** (oasgen-provider#598). Before,
   changing the value inside a Secret that a `ServiceEndpoint*` CR references changed nothing at the
   vendor until something else in the CR changed. Now the controller fingerprints the Secrets it
@@ -127,8 +127,9 @@ expect:
   - A kind that declares `get` but has no identifier recorded now reports `Ready=False`
     (`NoIdentifierRecorded`) instead of assuming it is up to date (oasgen-provider#682, #687).
     All 10 kinds here without a `findby` declare `get`, so all 10 are covered. In the live suites
-    from 0.71.0 to 0.76.0 no CR reached that state, or the old "assumed up to date" one
-    (between 451 and 479 sampled `Ready` conditions per run, every one with a reason).
+    from 0.71.0 to 0.76.0, and on 0.84.0, no CR reached that state, or the old "assumed up to date"
+    one (between 451 and 479 sampled `Ready` conditions per run up to 0.76.0, and 1293 across the
+    two 0.84.0 runs, every one with a reason).
 - **Fixed in 0.71.0, measured: another writer on the CR during its create no longer duplicates
   the Azure DevOps object** (oasgen-provider#692; fixed by #693 in 0.70.0 and #697 in 0.71.0).
   On 0.69.0, when a second field manager (a GitOps partial apply, or a controller adding labels)
@@ -150,7 +151,63 @@ expect:
   `findby`, 6 projects): adopting the project on page 1 cost 1 list request and the one on page 2
   cost 2, so the walk stops on the matching page and keeps its query on later pages. Not measured:
   a walk that finds nothing, and pages beyond 2.
-- **New in 0.74.0 (not pinned here; this chart went from 0.73.0 to 0.76.0 in one step):**
+- **Skip oasgen-provider 0.85.0 and 0.85.1; both are retracted upstream, and both create no
+  generated controller at all.** Measured here on 0.85.0, an upgrade from 0.76.0: every
+  RestDefinition failed with `failed to decode object: yaml: … did not find expected key`, because
+  its controller template nests the new `health` port one level too deep. 0.85.1 fixes that, but
+  renders `livenessProbe: {}`, which the Kubernetes API server refuses ("must specify a handler
+  type"), as measured with a server-side dry run on Kubernetes 1.36. Wait for a release this chart
+  pins.
+- **Do not set `rdc.metrics.port` on oasgen-provider 0.81.0 to 0.85.1** (oasgen-provider#856). Any
+  non-zero value renders a controller template that does not parse, so no controller is created.
+  Measured by rendering the 0.84.0 chart with `--set rdc.metrics.port=8080`. At the default of 0 the
+  block is not rendered and 0.84.0 works. On 0.80.0 and earlier the chart refuses the value.
+- **New in 0.77.0 to 0.84.0 (this chart went from 0.76.0 to 0.84.0 in one step):**
+  - **`findby` now refuses two or more matches instead of adopting the first** (oasgen-provider#789,
+    from 0.83.0). Measured on `Group` without `spec.scopeDescriptor` (its `findby` then searches
+    the whole organization by `displayName`), with two same-named groups in two projects:
+    - on 0.76.0, in two runs, the CR adopted one of them (a different one each run) and reported
+      `Ready=True`; deleting the CR then **deleted that group**, which it never created;
+    - on 0.84.0 the CR stopped at `Ready=Unknown/ObserveFailed` with "findby matched 2 or more
+      items on the declared identifiers", and deleting it deleted neither group.
+
+    Up to 0.82.0 the same applies to every kind with a `findby`, whenever more than one Azure
+    DevOps object matches its identifiers. **Still open in every version (oasgen-provider#790):**
+    the refusal is applied page by page, so two matches on different pages of a paginated list
+    are not detected and the first is adopted. That case could not be built here: this
+    organization's group list is one page and the endpoint ignores a page size. Give `Group` a
+    `spec.scopeDescriptor` so its search stays inside one scope.
+  - The Warning Event reason `UnmodelledKeysWouldBeRemoved` is renamed `UnmodelledKeysPresent`
+    (0.79.0), and its message no longer predicts that Azure DevOps deletes the keys. Update any
+    alert keyed on the old name. Measured on 0.84.0: the same 10 kinds warn under the new name, and
+    the old name appears 0 times. The table below still applies.
+  - **A kind with no `findby` can be stranded at `CreateOutcomeUnknown` by a refusal outside
+    400, 401, 404 and 422.** Measured on 0.84.0 with `GitPush`: a push Azure DevOps rejected with
+    409 Conflict (nothing was written) was classified as possibly committed. The kind cannot check
+    existence, so the CR stayed at `Ready=False/CreateOutcomeUnknown` for the rest of the run.
+    Upstream will stop setting the pending marker on kinds without a `findby` (not yet released);
+    **CRs already stranded do not clear by themselves.** Six kinds are exposed: `GitPush`,
+    `PolicyStatus`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `Run` and `CheckTask`. Their
+    `get` is addressed by an id that exists only in status, so the existence check falls back to a
+    `findby` the kind does not declare (oasgen-provider 0.84.0, `exists.go`). Four other kinds also
+    lack a `findby` (`FeedPermission`, `GroupMembership`, `PipelinePermission`,
+    `RepositoryPermission`), but their `get` is addressed from the spec, so the check uses it and
+    the marker resolves: an absent object or a network failure is an answer there. What to do for
+    a stranded CR, depending on what Azure DevOps holds:
+    - **The object exists:** write its id into the status field the kind's `get` reads (the remedy
+      measured above for `Run`). Do not remove the pending annotation: that sends the create again.
+    - **The object does not exist:** remove the annotation, so the controller creates it:
+      `kubectl annotate <kind> <name> krateo.io/external-create-pending-`. Upstream measured the
+      create then completing; this chart did not.
+    - **To remove the CR instead:** a plain `kubectl delete` waits indefinitely, because the delete
+      path asks the same unanswerable existence question first. Set the orphan policy first, then
+      delete: `kubectl annotate <kind> <name> krateo.io/deletion-policy=orphan`. Anything that
+      exists in Azure DevOps is left there. This is upstream's reading of the 0.84.0 runtime, not
+      measured here.
+  - The provider runs with leader election on by default (0.81.0). The chart's
+    `rdc.autoscaling` values are removed (0.84.0), and `serviceAccount.create=false` without a
+    `serviceAccount.name` now refuses to render (0.82.0). This chart's install sets none of these.
+- **New in 0.74.0:**
   - The controller's request timeout can be set with `rdc.env.REST_CONTROLLER_REQUEST_TIMEOUT`
     (default 30s, oasgen-provider#727).
   - A Warning Event `UnmodelledKeysWouldBeRemoved` reports keys Azure DevOps holds that a CR does not
@@ -187,7 +244,7 @@ expect:
   - The provider gains a ClusterRole for its status backfill. On an upgrade into 0.74.0 or later its
     first pass can log a short-lived permission Warning per kind. The live runs did not capture
     those events, so they are not counted here.
-- **Known issue on 0.71.0 to 0.76.0, measured: a CR that loses that race is left without an
+- **Known issue from 0.71.0, measured through 0.76.0 (the race was not re-run on 0.84.0): a CR that loses that race is left without an
   id and needs a human.** The controller refuses to create again, which is what prevents the duplicate, but it
   cannot find the object it made either: the kind has no `findby` to look it up, and its `get` is
   addressed by the id that was never recorded. The object exists once in Azure DevOps and the CR
@@ -231,7 +288,7 @@ expect:
   recorded the create as failed and sent the same POST again. On kinds where Azure DevOps accepts an
   identical create (`Run`, `PolicyStatus`, `CheckTask`, measured), that left extra objects, and the CR
   tracked only the last.
-  - **Measured on `Run`** (2026-11-16, disposable GKE clusters). The controller's request timeout was
+  - **Measured on `Run`** (2026-11-16 and, for 0.84.0, 2026-11-21; disposable GKE clusters). The controller's request timeout was
     set to the median POST latency, so roughly half the creates were cut:
 
     | oasgen-provider | Trials where a POST timed out | Re-sent | Runs for one CR |
@@ -239,24 +296,25 @@ expect:
     | 0.74.0 | 4 | 3 | 2, 3, 2 |
     | 0.75.0 | 2 | 2 | 2, 2 (0.75.0's fix did not take effect, oasgen-provider#746) |
     | 0.76.0 | 1 | 0 | 1 |
+    | 0.84.0 | 6 | 0 | 1, 1, 1, 1, 1, 1 |
 
     Controls: a trial at the default timeout, and every trial whose POST did not time out, left exactly
     one run. 0.73.0 has the same create path as 0.74.0 and was not measured separately.
-  - **What happens instead on 0.76.0, for a kind with no `findby`:** the controller cannot check
+  - **What happens instead from 0.76.0 (measured on 0.76.0 and 0.84.0), for a kind with no `findby`:** the controller cannot check
     whether the create landed, so it stops and waits. The CR shows `Ready=False` with reason
     `CreateOutcomeUnknown`, carries only the `krateo.io/external-create-pending` annotation, and its
     `Synced` message says `cannot determine creation result … this kind declares no findby verb`. The
     object exists once in Azure DevOps. Exposed: the same 6 kinds as the race above, whose `get`
     reads `status.id` or `status.pushId`.
-  - **Remedy, measured on 0.76.0:** find the object in Azure DevOps, write its id into the field the
+  - **Remedy, measured on 0.76.0 (1 CR) and 0.84.0 (6 of 6 CRs, each `Ready=True` about 3 minutes later with no new run):** find the object in Azure DevOps, write its id into the field the
     `get` reads, and wait one poll. For example:
     `kubectl patch runs.azuredevops.krateo.io <name> --subresource=status --type=merge -p '{"status":{"id":<id>}}'`.
     The patch must use `--subresource=status`; without it the API server accepts the patch and drops
     the status. On the measured CR, `Ready=True` followed about 3 minutes later with the same id. The
-    controller added `external-create-succeeded` itself, and no new run was created. One CR; the
-    vendor's run ids were checked.
-  - **Do not remove the `krateo.io/external-create-pending` annotation**, whatever the `Synced`
-    message suggests. On 0.76.0, removing it alone made the controller create again in the same
+    controller added `external-create-succeeded` itself, and no new run was created. One CR on 0.76.0
+    and six on 0.84.0; the vendor's run ids were checked each time.
+  - **When the object exists, do not remove the `krateo.io/external-create-pending` annotation**,
+    whatever the `Synced` message suggests. On 0.76.0, removing it alone made the controller create again in the same
     second, and the existing object was left untracked. This was measured by github-provider-kog on
     GitHub (krateo-blueprints/github-provider-kog#95), not on this chart.
   - **Skip 0.77.0.** On 0.77.0 only, a kind *with* a `findby` whose create did not land (its list
