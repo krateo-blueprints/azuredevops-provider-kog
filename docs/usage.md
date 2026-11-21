@@ -185,9 +185,13 @@ expect:
     409 Conflict (nothing was written) was classified as possibly committed. The kind cannot check
     existence, so the CR stayed at `Ready=False/CreateOutcomeUnknown` for the rest of the run.
     Upstream will stop setting the pending marker on kinds without a `findby` (not yet released);
-    CRs already stranded will not clear by themselves. The kinds here without a `findby` include
-    `GitPush`, `PolicyStatus`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `Run` and
-    `CheckTask`. What to do, depending on what Azure DevOps holds:
+    CRs already stranded will not clear by themselves. Ten kinds here have no `findby`. Six of
+    them address their `get` by an id held only in status, so nothing can answer the existence
+    question: `GitPush`, `PolicyStatus`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `Run`
+    and `CheckTask`. For the other four (`FeedPermission`, `GroupMembership`,
+    `PipelinePermission`, `RepositoryPermission`), the `get` is addressed from the spec, and
+    whether that answers the check was not determined. What to do, depending on what Azure DevOps
+    holds:
     - **The object exists:** write its id into the status field the kind's `get` reads (the remedy
       measured above for `Run`). Do not remove the pending annotation: that sends the create again.
     - **The object does not exist:** remove the annotation, so the controller creates it:
