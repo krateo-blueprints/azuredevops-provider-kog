@@ -11,6 +11,31 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-21 — oasgen-provider 0.84.0 (findby refuses duplicate matches)
+
+- Pinned oasgen-provider 0.84.0, from 0.76.0 in one step. The upgrade regenerated all 25
+  RestDefinitions (`0.84.0-de67f828…`) with no reconciler error, and a carried `GitRepository` kept
+  its id. Live suites: 12/12, 183 checks. Arms: no restart on a Secret-name change, and all 25
+  controllers rolled on an `rdc.env` change, both ways. 1293 `Ready` conditions sampled, all with a
+  reason.
+- The reason to upgrade: up to 0.82.0, `findby` adopts the first of several matching objects
+  (oasgen-provider#789). Measured on `Group` without a scope: on 0.76.0 the CR adopted one of two
+  same-named groups and its delete removed that group (two runs, a different group each time); on
+  0.84.0 it refused and nothing was deleted. Two matches on different pages (#790) remain
+  unrefused; that case could not be built here.
+- Lost create response on `Run`, 0.84.0: 6 trials with the response lost, 0 re-sent, and 6 of 6
+  stuck CRs cleared by writing `status.id`.
+- 0.85.0 and 0.85.1 are skipped. 0.85.0 rendered no controller (measured here, upgrade from 0.76.0).
+  0.85.1's controller template is refused by the API server (`livenessProbe: {}`, server-side dry
+  run). Both are retracted upstream. `rdc.metrics.port` must stay unset on 0.81.0 to 0.85.1.
+- New finding: on 0.84.0 a `GitPush` create refused with 409 stays at `CreateOutcomeUnknown`. The
+  six kinds whose `get` needs a status id cannot leave that state by themselves. Upstream will stop
+  setting the pending marker on such kinds; until then usage.md gives the remedy per case.
+- Harness lessons: stopping a run mid-suite left fixed-name fixtures that the next run adopted, which
+  voided one suite (rerun clean, 23/23). The pre-run sweep now covers fixed-name objects, and a
+  run is stopped by its whole process tree. Release checks now include a server-side dry run of
+  the controller template, not only a parse, which is what would have caught 0.85.1.
+
 ## 2026-11-17 — which `UnmodelledKeysWouldBeRemoved` warnings are real
 
 - Measured against Azure DevOps on four kinds (`PolicyStatus`, `PolicyBuildValidation`,
