@@ -180,6 +180,24 @@ expect:
     (0.79.0), and its message no longer predicts that Azure DevOps deletes the keys. Update any
     alert keyed on the old name. Measured on 0.84.0: the same 10 kinds warn under the new name, and
     the old name appears 0 times. The table below still applies.
+  - **A kind with no `findby` can be stranded at `CreateOutcomeUnknown` by a refusal outside
+    400, 401, 404 and 422.** Measured on 0.84.0 with `GitPush`: a push Azure DevOps rejected with
+    409 Conflict (nothing was written) was classified as possibly committed. The kind cannot check
+    existence, so the CR stayed at `Ready=False/CreateOutcomeUnknown` for the rest of the run.
+    Upstream will stop setting the pending marker on kinds without a `findby` (not yet released);
+    CRs already stranded will not clear by themselves. The kinds here without a `findby` include
+    `GitPush`, `PolicyStatus`, `PolicyBuildValidation`, `PolicyRequiredReviewers`, `Run` and
+    `CheckTask`. What to do, depending on what Azure DevOps holds:
+    - **The object exists:** write its id into the status field the kind's `get` reads (the remedy
+      measured above for `Run`). Do not remove the pending annotation: that sends the create again.
+    - **The object does not exist:** remove the annotation, so the controller creates it:
+      `kubectl annotate <kind> <name> krateo.io/external-create-pending-`. Upstream measured the
+      create then completing; this chart did not.
+    - **To remove the CR instead:** a plain `kubectl delete` waits indefinitely, because the delete
+      path asks the same unanswerable existence question first. Set the orphan policy first, then
+      delete: `kubectl annotate <kind> <name> krateo.io/deletion-policy=orphan`. Anything that
+      exists in Azure DevOps is left there. This is upstream's reading of the 0.84.0 runtime, not
+      measured here.
   - The provider runs with leader election on by default (0.81.0). The chart's
     `rdc.autoscaling` values are removed (0.84.0), and `serviceAccount.create=false` without a
     `serviceAccount.name` now refuses to render (0.82.0). This chart's install sets none of these.
