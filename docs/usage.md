@@ -64,17 +64,17 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
-### Upgrading oasgen-provider to 0.76.0
+### Upgrading oasgen-provider to 0.84.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
 measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
-(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0, 0.66.0 to 0.69.0 and 0.69.0 to 0.71.0 (2026-11-15), 0.71.0 to 0.72.0 and 0.72.0 to 0.73.0 (2026-11-16), 0.73.0 to 0.74.0 and 0.73.0 to 0.76.0 in one step (2026-11-17).
+(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0, 0.66.0 to 0.69.0 and 0.69.0 to 0.71.0 (2026-11-15), 0.71.0 to 0.72.0 and 0.72.0 to 0.73.0 (2026-11-16), 0.73.0 to 0.74.0 and 0.73.0 to 0.76.0 in one step (2026-11-17), 0.76.0 to 0.84.0 in one step (2026-11-21).
 Larger jumps were not run on
 their own. What to
 expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.76.0-74dbdeba…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.84.0-de67f828…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -98,7 +98,7 @@ expect:
   RestDefinitions after the upgrade.
 - After a create or an update, a CR reports `Ready=False` (`Creating` or `Updating`) until its
   controller's next poll, up to 3 minutes, even though Azure DevOps already has the change
-  (oasgen-provider#648, unchanged in 0.76.0; measured: 3 minutes after an update). Allow at least that long when waiting for `Ready`.
+  (oasgen-provider#648, measured on 0.76.0: 3 minutes after an update; not re-measured on 0.84.0). Allow at least that long when waiting for `Ready`.
 - **New in 0.65.0: a rotated Secret value now reaches Azure DevOps** (oasgen-provider#598). Before,
   changing the value inside a Secret that a `ServiceEndpoint*` CR references changed nothing at the
   vendor until something else in the CR changed. Now the controller fingerprints the Secrets it
@@ -150,7 +150,40 @@ expect:
   `findby`, 6 projects): adopting the project on page 1 cost 1 list request and the one on page 2
   cost 2, so the walk stops on the matching page and keeps its query on later pages. Not measured:
   a walk that finds nothing, and pages beyond 2.
-- **New in 0.74.0 (not pinned here; this chart went from 0.73.0 to 0.76.0 in one step):**
+- **Skip oasgen-provider 0.85.0 and 0.85.1; both are retracted upstream, and both create no
+  generated controller at all.** Measured here on 0.85.0, an upgrade from 0.76.0: every
+  RestDefinition failed with `failed to decode object: yaml: … did not find expected key`, because
+  its controller template nests the new `health` port one level too deep. 0.85.1 fixes that, but
+  renders `livenessProbe: {}`, which the Kubernetes API server refuses ("must specify a handler
+  type"), as measured with a server-side dry run on Kubernetes 1.36. Wait for a release this chart
+  pins.
+- **Do not set `rdc.metrics.port` on oasgen-provider 0.81.0 to 0.85.1** (oasgen-provider#856). Any
+  non-zero value renders a controller template that does not parse, so no controller is created.
+  Measured by rendering the 0.84.0 chart with `--set rdc.metrics.port=8080`. At the default of 0 the
+  block is not rendered and 0.84.0 works. On 0.80.0 and earlier the chart refuses the value.
+- **New in 0.77.0 to 0.84.0 (this chart went from 0.76.0 to 0.84.0 in one step):**
+  - **`findby` now refuses two or more matches instead of adopting the first** (oasgen-provider#789,
+    from 0.83.0). Measured on `Group` without `spec.scopeDescriptor` (its `findby` then searches
+    the whole organization by `displayName`), with two same-named groups in two projects:
+    - on 0.76.0, in two runs, the CR adopted one of them (a different one each run) and reported
+      `Ready=True`; deleting the CR then **deleted that group**, which it never created;
+    - on 0.84.0 the CR stopped at `Ready=Unknown/ObserveFailed` with "findby matched 2 or more
+      items on the declared identifiers", and deleting it deleted neither group.
+
+    Up to 0.82.0 the same applies to every kind with a `findby`, whenever more than one Azure
+    DevOps object matches its identifiers. **Still open in every version (oasgen-provider#790):**
+    the refusal is applied page by page, so two matches on different pages of a paginated list
+    are not detected and the first is adopted. That case could not be built here: this
+    organization's group list is one page and the endpoint ignores a page size. Give `Group` a
+    `spec.scopeDescriptor` so its search stays inside one scope.
+  - The Warning Event reason `UnmodelledKeysWouldBeRemoved` is renamed `UnmodelledKeysPresent`
+    (0.79.0), and its message no longer predicts that Azure DevOps deletes the keys. Update any
+    alert keyed on the old name. Measured on 0.84.0: the same 10 kinds warn under the new name, and
+    the old name appears 0 times. The table below still applies.
+  - The provider runs with leader election on by default (0.81.0). The chart's
+    `rdc.autoscaling` values are removed (0.84.0), and `serviceAccount.create=false` without a
+    `serviceAccount.name` now refuses to render (0.82.0). This chart's install sets none of these.
+- **New in 0.74.0:**
   - The controller's request timeout can be set with `rdc.env.REST_CONTROLLER_REQUEST_TIMEOUT`
     (default 30s, oasgen-provider#727).
   - A Warning Event `UnmodelledKeysWouldBeRemoved` reports keys Azure DevOps holds that a CR does not
