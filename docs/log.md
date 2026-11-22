@@ -11,6 +11,26 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-22 — oasgen-provider 0.87.0 (a persistently refused create is reported)
+
+- Pinned oasgen-provider 0.87.0, from 0.86.0 in one step. The upgrade regenerated all 25
+  RestDefinitions (`0.87.0-438e422b…`) with no reconciler error, and a carried `GitRepository` kept
+  its id. Live suites: 12/12, 194 checks. smoke-graph's membership-adoption check failed once on a
+  single, unpolled read (the CR was Ready in 8 s and the next step found the membership). The check
+  now polls like the rest, and smoke-graph alone passed 13/13. 757 `Ready` conditions sampled, all
+  with a reason.
+- `CreateRefusedPersistently` reached a live cluster for the first time. A `GitRepository` refused
+  with 400 read `Ready=False/CreateRefusedPersistently` "(last status 400)" at 188 minutes, with its
+  original `lastTransitionTime` and one `Ready` condition. On 0.85.2 and 0.86.0 it never appeared.
+- Unchanged and re-measured:
+  - `ExistenceAnswerable=False` on exactly the six kinds. Under 0.87.0's spec rule (#880) none of
+    them has a spec field with its id's name.
+  - A stranded `GitPush` deletes in 0 s.
+  - Duplicate `findby` matches are refused.
+  - Both replicas stay Ready.
+  - A lost create response on `Run`: 4 trials lost the response, 0 re-sent, 4 of 4 cleared by
+    writing `status.id`.
+
 ## 2026-11-22 — oasgen-provider 0.86.0 (a stranded CR can be deleted)
 
 - Pinned oasgen-provider 0.86.0, from 0.84.0 in one step. The upgrade regenerated all 25

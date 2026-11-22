@@ -324,7 +324,7 @@ expect:
   recorded the create as failed and sent the same POST again. On kinds where Azure DevOps accepts an
   identical create (`Run`, `PolicyStatus`, `CheckTask`, measured), that left extra objects, and the CR
   tracked only the last.
-  - **Measured on `Run`** (2026-11-16, 2026-11-21 for 0.84.0 and 2026-11-22 for 0.86.0; disposable GKE clusters). The controller's request timeout was
+  - **Measured on `Run`** (2026-11-16, 2026-11-21 for 0.84.0 and 2026-11-22 for 0.86.0 and 0.87.0; disposable GKE clusters). The controller's request timeout was
     set to the median POST latency, so roughly half the creates were cut:
 
     | oasgen-provider | Trials where a POST timed out | Re-sent | Runs for one CR |
@@ -334,22 +334,23 @@ expect:
     | 0.76.0 | 1 | 0 | 1 |
     | 0.84.0 | 6 | 0 | 1, 1, 1, 1, 1, 1 |
     | 0.86.0 | 5 | 0 | 1, 1, 1, 1, 1 |
+    | 0.87.0 | 4 | 0 | 1, 1, 1, 1 |
 
     Controls: a trial at the default timeout, and every trial whose POST did not time out, left exactly
     one run. 0.73.0 has the same create path as 0.74.0 and was not measured separately.
-  - **What happens instead from 0.76.0 (measured on 0.76.0, 0.84.0 and 0.86.0), for a kind with no `findby`:** the controller cannot check
+  - **What happens instead from 0.76.0 (measured on 0.76.0, 0.84.0, 0.86.0 and 0.87.0), for a kind with no `findby`:** the controller cannot check
     whether the create landed, so it stops and waits. The CR shows `Ready=False` with reason
     `CreateOutcomeUnknown`, carries only the `krateo.io/external-create-pending` annotation, and its
     `Synced` message says `cannot determine creation result … this kind declares no findby verb`. The
     object exists once in Azure DevOps. Exposed: the same 6 kinds as the race above, whose `get`
     reads `status.id` or `status.pushId`.
-  - **Remedy, measured on 0.76.0 (1 CR), 0.84.0 (6 of 6) and 0.86.0 (5 of 5), each CR `Ready=True` about 3 minutes later with no new run:** find the object in Azure DevOps, write its id into the field the
+  - **Remedy, measured on 0.76.0 (1 CR), 0.84.0 (6 of 6), 0.86.0 (5 of 5) and 0.87.0 (4 of 4), each CR `Ready=True` about 3 minutes later with no new run:** find the object in Azure DevOps, write its id into the field the
     `get` reads, and wait one poll. For example:
     `kubectl patch runs.azuredevops.krateo.io <name> --subresource=status --type=merge -p '{"status":{"id":<id>}}'`.
     The patch must use `--subresource=status`; without it the API server accepts the patch and drops
     the status. On the measured CR, `Ready=True` followed about 3 minutes later with the same id. The
     controller added `external-create-succeeded` itself, and no new run was created. One CR on 0.76.0,
-    six on 0.84.0 and five on 0.86.0; the vendor's run ids were checked each time.
+    six on 0.84.0, five on 0.86.0 and four on 0.87.0; the vendor's run ids were checked each time.
   - **When the object exists, do not remove the `krateo.io/external-create-pending` annotation**,
     whatever the `Synced` message suggests. On 0.76.0, removing it alone made the controller create again in the same
     second, and the existing object was left untracked. This was measured by github-provider-kog on
