@@ -11,6 +11,28 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-22 — oasgen-provider 0.86.0 (a stranded CR can be deleted)
+
+- Pinned oasgen-provider 0.86.0, from 0.84.0 in one step. The upgrade regenerated all 25
+  RestDefinitions (`0.86.0-867547f5…`) with no reconciler error, and a carried `GitRepository` kept
+  its id. Live suites: 12/12, 194 checks. Arms: no restart on a Secret-name change, and all 25
+  controllers rolled on an `rdc.env` change, both ways. 779 `Ready` conditions sampled, all with a
+  reason. The upgrade from 0.84.0 to 0.85.2 was measured the same way and also passed (194/194);
+  0.85.2 was not pinned, because 0.86.0 followed within hours.
+- Measured new behaviour, each predicted before the run:
+  - a `GitPush` stranded by a 409 is released by a plain `kubectl delete` in 1 s (on 0.84.0 the same
+    delete waited 300 s, until `krateo.io/deletion-policy=orphan` was set);
+  - `ExistenceAnswerable=False` on exactly the six status-addressed kinds;
+  - with two replicas per controller, both stay `Ready`.
+- Still refused: two same-named groups on one page (#789). A lost create response on `Run`: 5
+  trials lost the response, 0 re-sent, 5 of 5 cleared by writing `status.id`.
+- `CreateRefusedPersistently` (from 0.85.0) never appeared on a live cluster, on 0.85.2 or 0.86.0.
+  The runtime rewrites `Ready` after a failed create, so the controller's condition does not survive;
+  upstream's fix is #877, not released. The condition's timestamp anchor did hold (unchanged for
+  more than three hours).
+- Harness: its scripts were swept from the session scratchpad mid-run for the third time. The
+  harness now lives in durable storage.
+
 ## 2026-11-21 — oasgen-provider 0.84.0 (findby refuses duplicate matches)
 
 - Pinned oasgen-provider 0.84.0, from 0.76.0 in one step. The upgrade regenerated all 25
