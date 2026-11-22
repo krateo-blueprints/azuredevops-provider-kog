@@ -64,6 +64,46 @@ change and its tests. Clusters still on 0.56.0 or earlier log both unredacted.
 Keep `connector-verbose` off outside debugging regardless, and give read access to the controller
 logs only to those who may read the Secrets.
 
+### Known issue: a create interrupted by a network error can leave a CR stuck
+
+**Affects chart 0.12.0 and later** (oasgen-provider 0.76.0 onward; the code involved is present
+from at least 0.70.0), on the 15 kinds with a `findby`: `CheckApproval`, `CheckExclusiveLock`,
+`CheckRequiredTemplate`, `Environment`, `Feed`, `GitRepository`, `Group`, `Pipeline`, `PullRequest`,
+`Queue`, the four `ServiceEndpoint*` kinds and `TeamProject`. Reported upstream as
+oasgen-provider#901; not fixed in any release yet.
+
+When a create request fails at the network level, with no HTTP status (for example `connection
+reset by peer`), the controller cannot tell whether Azure DevOps made the object. Before trying
+again it looks the object up with the kind's `findby`. If that list matches nothing, the
+controller does not take it as proof that the object is absent, because a mismatch can have other
+causes. So it neither creates again nor clears the state: the CR waits indefinitely, and a delete
+waits with it.
+
+- **Measured on oasgen-provider 0.90.0** (2026-11-22, one controller pod, no restart): a
+  `GitRepository` whose create Azure DevOps kept refusing with 400. One retry's request was
+  reset (`read: connection reset by peer`); 2.5 minutes later the CR read
+  `Ready=False/CreateOutcomeUnknown` and stayed there.
+- **Measured on 0.89.0** (2026-11-22): the same state, in a run where the controller was
+  restarted twice while the create was being retried (what interrupted the request was not
+  captured). A plain `kubectl delete` did not complete within 180 seconds.
+- **Not measured:** a create Azure DevOps would accept, interrupted the same way. If the request
+  never reached Azure DevOps, the list matches nothing and the same state should follow.
+
+**How to recognise it:** `Ready=False` with reason `CreateOutcomeUnknown`, and a message that
+contains `findby listed successfully but no item matched`. The CR's
+`krateo.io/external-create-pending` annotation holds a later time than its
+`krateo.io/external-create-failed` annotation, if that one is present.
+
+**What to do:** look for the object in Azure DevOps, by the fields the kind identifies it with
+(the repository name for `GitRepository`, for example).
+
+- **The object does not exist:** remove the annotation, so the controller creates it again:
+  `kubectl annotate <kind> <name> krateo.io/external-create-pending-`. This is the runtime's own
+  instruction for this state; this chart has not measured it yet.
+- **The object exists:** do not remove the annotation, because that sends the create again. The
+  list did not match an object that exists, so compare the CR's identifying fields with the
+  object's and report the mismatch.
+
 ### Upgrading oasgen-provider to 0.87.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
@@ -358,8 +398,9 @@ expect:
   - **Skip 0.77.0.** On 0.77.0 only, a kind *with* a `findby` whose create did not land (its list
     matches nothing) reports `Creating` indefinitely, with nothing that points a person at it
     (oasgen-provider#758, reverted by #759 for 0.78.0). 15 of this chart's 25 kinds have a `findby`.
-    On 0.76.0, which this release pins, that case reports `CreateOutcomeUnknown` instead. This is
-    oasgen-provider's reading of its source; it was not measured on this chart.
+    On 0.76.0, which this release pins, that case reports `CreateOutcomeUnknown` instead. This was
+    oasgen-provider's reading of its source; the state was later measured on 0.89.0 and 0.90.0, and
+    it does not clear by itself (see [the known issue](#known-issue-a-create-interrupted-by-a-network-error-can-leave-a-cr-stuck)).
   - **Still on 0.73.0 to 0.75.0?** The duplicate shows as a CR carrying both
     `external-create-failed` and `external-create-succeeded`, with a Warning Event
     `CannotCreateExternalResource` whose message contains `making request:`. Remove the extra objects
