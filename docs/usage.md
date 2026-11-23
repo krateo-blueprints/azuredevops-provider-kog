@@ -87,8 +87,8 @@ waits with it.
   restarted twice while the create was being retried (what interrupted the request was not
   captured). A plain `kubectl delete` did not complete within 180 seconds.
 - **The state survives controller restarts** (three controller pods on 0.90.0), and a plain
-  `kubectl delete` does not complete (180 seconds on 0.89.0; on 0.90.0 the CR was still present 10
-  minutes after the delete was requested).
+  `kubectl delete` does not complete (180 seconds on 0.89.0; on 0.90.0 the CR was still present
+  almost 7 minutes after the delete was requested, when the annotation was removed).
 - **Not measured:** a create Azure DevOps would accept, interrupted the same way. If the request
   never reached Azure DevOps, the list matches nothing and the same state should follow.
 
@@ -107,10 +107,12 @@ contains `findby listed successfully but no item matched`. The CR's
   was `Ready=True` 12 seconds after the annotation was removed, with exactly one repository in Azure
   DevOps.
 - **The CR is being deleted:** a plain delete does not complete on its own. Removing the
-  annotation released it in about one second, measured on 0.90.0 on the naturally stuck CR above,
-  with no create sent. Its name was one Azure DevOps refuses, so a create could not have
-  succeeded; for a name Azure DevOps would accept, check afterwards that no repository (or other
-  object) was created, including in Azure DevOps's recycle bin. Not measured.
+  annotation released it in about one second, measured on 0.90.0 on the naturally stuck CR above.
+  The controller logged `External resource is not addressable, releasing finalizer without calling
+  the API`: it sent no create, and no delete either. **So if the interrupted create did reach Azure
+  DevOps, the object stays there:** look for it, and delete it yourself if you do not want it. The
+  measured CR's name was one Azure DevOps refuses; a name it would accept was not measured, so also
+  check afterwards that nothing was created, including in the recycle bin.
 - **The object exists:** do not remove the annotation, because that sends the create again. The
   list did not match an object that exists, so compare the CR's identifying fields with the
   object's and report the mismatch.
@@ -229,7 +231,7 @@ expect:
     and `ExistenceAnswerable=False` is on the same six kinds. This chart did not release a pin on
     0.88.0 or 0.89.0.
   - **See the [known issue](#known-issue-a-create-interrupted-by-a-network-error-can-leave-a-cr-stuck)**:
-    it is present in this release as in every earlier one.
+    it is present in this release, as in every release since chart 0.12.0.
 - **New in 0.87.0 (this chart went from 0.86.0 to 0.87.0 in one step):**
   - **A create Azure DevOps keeps refusing is now reported on the CR.** After the refusal (status
     400, 401, 404 or 422) has outlasted an hour, `Ready` changes from `Creating` to
