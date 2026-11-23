@@ -11,6 +11,20 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-23 — the release runs on the shared release-oci 2.0.0
+
+- `release-oci.yaml` now makes one call to krateo-platformops/.github `release-oci.yaml` 2.0.0
+  (from 1.0.1), with `index_channel: operators` and `CHARTS_PUBLISH_TOKEN`. 2.0.0 runs the release
+  preflight, the token check and the index's content gate before anything is pushed. It also does
+  the pull-back and the index publish this repository did in its own `release-preflight`,
+  `collect` and `publish-index` jobs, which are removed. `preflight` keeps the checks only this
+  repository makes: lint passed on the tagged commit, both charts take `version` and `appVersion`
+  from the tag, and the pin is not retracted as read at release time.
+- A manual run defaults to a dry run (build and check everything, push nothing).
+- Prompted by oasgen-provider 0.91.0, whose release did not start: its caller tracked the shared
+  workflow at `@main`, and 2.0.0 made `index_channel` required. This repository was unaffected,
+  because it pins by commit SHA.
+
 ## 2026-11-23 — oasgen-provider 0.90.0 (an Accept header on every request; a stuck-create known issue)
 
 - Pinned oasgen-provider 0.90.0, from 0.87.0 in one step. 0.88.0 and 0.89.0 were measured
