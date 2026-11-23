@@ -11,6 +11,33 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-23 — oasgen-provider 0.90.0 (an Accept header on every request; a stuck-create known issue)
+
+- Pinned oasgen-provider 0.90.0, from 0.87.0 in one step. 0.88.0 and 0.89.0 were measured
+  (0.89.0 in full) but not released as pins: they only change RestDefinition validation this chart
+  does not use. The upgrade regenerated all 25 RestDefinitions (`0.90.0-7b97a0b3…`) with no
+  reconciler error, and a carried `GitRepository` kept its id. Live suites: 12/12, 194 checks. 756
+  `Ready` conditions sampled, all with a reason.
+- Every request now sends `Accept: application/json` (all 108 of this chart's operations, by count
+  of its OpenAPI documents).
+- **Known issue documented (oasgen-provider#901):** a create interrupted at the network level on a
+  kind with a `findby` leaves the CR at `CreateOutcomeUnknown` for good, and its delete waits. Seen
+  on 0.89.0, then captured on 0.90.0 with one controller pod and no restart: a retry of a refused
+  create got `connection reset by peer`. The code involved dates from at least 0.70.0, so every
+  release of this chart since 0.12.0 has it. Measured remedy: removing
+  `krateo.io/external-create-pending` (12 s to `Ready=True` on a CR constructed in that state;
+  about 1 s release for a stuck CR being deleted). Graceful controller restarts timed to an
+  in-flight create (4 trials) did not reproduce it: each in-flight attempt finished before the pod
+  stopped.
+- Unchanged and re-measured:
+  - `ExistenceAnswerable=False` on exactly the six kinds.
+  - A stranded `GitPush` deletes in 0 s.
+  - Duplicate `findby` matches are refused.
+  - Both replicas stay Ready.
+  - A lost create response on `Run`: 4 trials lost the response, 0 re-sent, 4 of 4 cleared by
+    writing `status.id`.
+  - `vendorResponse` carries Azure DevOps's refusal body in the controller log (captured live).
+
 ## 2026-11-22 — oasgen-provider 0.87.0 (a persistently refused create is reported)
 
 - Pinned oasgen-provider 0.87.0, from 0.86.0 in one step. The upgrade regenerated all 25
