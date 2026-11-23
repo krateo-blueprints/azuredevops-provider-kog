@@ -12,29 +12,35 @@ timestamp: 2026-11-07T00:00:00Z
 One annotated, plain-semver tag (`X.Y.Z`, no `v`) on `main` releases everything. It triggers
 `release-oci.yaml`, which follows the organisation's publishing standard
 ([krateo-blueprints/charts `PUBLISHING.md`](https://github.com/krateo-blueprints/charts/blob/main/PUBLISHING.md)):
-every chart is published twice, with the same bytes, because the Marketplace installs from the
-helm index, not from GHCR.
+every chart is published twice, with the same bytes (to GHCR and to the helm index), because the
+Marketplace installs from the helm index, not from GHCR.
 
-1. **`preflight`** refuses the release before anything is published if the tagged commit has no
-   successful `lint.yaml` run (which includes `oas-assets-fresh` and `render-check`), or if
-   `CHARTS_PUBLISH_TOKEN` is not configured.
-2. **`release-preflight`** (the organisation's shared check, `release-preflight.yaml`, pinned by
-   commit SHA) refuses a version that is not plain `X.Y.Z`: no `v`, no leading zeros, no
-   pre-release or build suffix. `publish-chart` would refuse such a version only at index time,
-   after the GHCR push.
-3. **`release-oci`** (the org's shared workflow) stamps `CHART_VERSION` (both `version` and `appVersion`), discovers `chart/` and
-   `config-chart/`, packages both and pushes them to `oci://ghcr.io/krateo-blueprints/charts`.
-   It refuses to replace a published version whose contents differ, and skips one whose contents
-   are identical.
-4. **`collect`** pulls both charts back from GHCR and uploads them as the `charts-dist` artifact.
-   That guarantees the index gets exactly the bytes GHCR holds (`helm package` writes fresh
-   timestamps, and a skipped push means the local archive was never published). It asserts the
-   artifact holds exactly the two charts, each with `version` and `appVersion` equal to the tag.
-5. **`publish-index`** calls the organisation's publisher, `publish-chart.yaml`, pinned by commit
-   SHA (kept current by Dependabot), with `channel: operators`: neither chart ships a
-   CompositionDefinition. The publisher stores the archives, merges the index, and succeeds only
-   once `https://krateo-blueprints.github.io/charts/operators/index.yaml` lists both charts and
-   each installs anonymously.
+1. **`preflight`** makes the checks specific to this repository, before anything is published. It
+   refuses the release if the tagged commit has no successful `lint.yaml` run (which includes
+   `oas-assets-fresh` and `render-check`), if either chart does not take both `version` and
+   `appVersion` from the tag (`CHART_VERSION`), or if the oasgen-provider pin is on upstream's
+   retracted list as read at release time (not only at lint time).
+2. **`release-oci`** is one call to the organisation's shared workflow, `release-oci.yaml` 2.0.0,
+   pinned by commit SHA (kept current by Dependabot), with `index_channel: operators` (neither
+   chart ships a CompositionDefinition) and `CHARTS_PUBLISH_TOKEN`. Before anything is pushed it:
+   - refuses a version that is not plain `X.Y.Z` (no `v`, no leading zeros, no pre-release or build
+     suffix);
+   - checks the index token is present and well formed;
+   - refuses to replace a published version whose contents differ, and skips one whose contents
+     are identical;
+   - passes each chart through the index's own content gate (channel, complete archive, `sources`,
+     plain version).
+
+   It then stamps `CHART_VERSION`, packages `chart/` and `config-chart/`, and pushes both to
+   `oci://ghcr.io/krateo-blueprints/charts`. Next it pulls back exactly what it pushed, so the
+   index gets the bytes GHCR holds, and publishes them through the organisation's publisher,
+   `publish-chart`. That succeeds only once
+   `https://krateo-blueprints.github.io/charts/operators/index.yaml` lists both charts and each
+   installs anonymously.
+
+**Rehearsal:** a manual run of `release-oci.yaml` (`workflow_dispatch`) defaults to `dry_run`. It
+runs every check and builds every package, pushes nothing, and uploads the packages as the
+`release-oci-charts` artifact, so the run shows what it would have published.
 
 `release-notes` writes the GitHub Release body. Tags are never moved or replaced, and a published
 version is never overwritten: to fix a release, cut the next version.
