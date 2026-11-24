@@ -11,6 +11,37 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-24 — oasgen-provider 0.91.1 (a clearer message for a stuck create; two known issues measured further)
+
+- Pinned oasgen-provider 0.91.1, from 0.90.0 (0.91.0 published no charts and is retracted). The
+  upgrade regenerated all 25 RestDefinitions (`0.91.1-4e27614f…`) with no reconciler error, and a
+  carried `GitRepository` kept its id. Live suites: 12/12, 194 checks. 744 `Ready` conditions
+  sampled, all with a reason.
+- **oasgen-provider#901, measured further on 0.91.1:** a new CR got stuck by itself, 3.6 seconds
+  after its first create attempt (`connection reset by peer`). A stuck CR put into that state by
+  hand, with a name Azure DevOps accepts, was released 3 seconds after removing
+  `krateo.io/external-create-pending`, and nothing was created. The new message says what removing
+  the annotation does.
+- **oasgen-provider#919 documented:** refused creates are retried without a lookup. Sending each
+  create twice, Azure DevOps kept one object for all 15 kinds with a `findby`. The expectation
+  recorded before the test, that the check kinds would duplicate, was wrong.
+- The controller-restart trials recovered 4 of 4 again but are void on 0.91.1: their control was
+  the CR that got stuck by itself. 0.90.0's 4 of 4 stand.
+- The regression's check for leftover CRs between suites had not worked since 2026-11-22 (a list it
+  needed was lost when the harness moved, and it read that as "none"). That covers the evidence
+  for charts 0.15.0, 0.16.0 and this one. Reconstructed from the status samples, the only CR alive
+  at each suite start was the one the refused-create probe keeps on purpose; the sampler does not
+  report a failed listing for one kind, so this is strong evidence, not proof. The check now stops
+  the run when it cannot list.
+- Unchanged and re-measured:
+  - `ExistenceAnswerable=False` on exactly the six kinds.
+  - A stranded `GitPush` deletes in 1 s.
+  - Duplicate `findby` matches are refused.
+  - Both replicas stay Ready.
+  - `CreateRefusedPersistently` arrives 1 h 1 min after the first refusal.
+  - A lost create response on `Run`: 8 trials lost the response, 0 re-sent, 8 of 8 cleared by
+    writing `status.id`.
+
 ## 2026-11-23 — the release runs on the shared release-oci 2.0.0
 
 - `release-oci.yaml` now makes one call to krateo-platformops/.github `release-oci.yaml` 2.0.0
