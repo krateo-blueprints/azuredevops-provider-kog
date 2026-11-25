@@ -20,7 +20,7 @@ Marketplace installs from the helm index, not from GHCR.
    `oas-assets-fresh` and `render-check`), if either chart does not take both `version` and
    `appVersion` from the tag (`CHART_VERSION`), or if the oasgen-provider pin is on upstream's
    retracted list as read at release time (not only at lint time).
-2. **`release-oci`** is one call to the organisation's shared workflow, `release-oci.yaml` 2.0.0,
+2. **`release-oci`** is one call to the organisation's shared workflow, `release-oci.yaml` 2.1.0,
    pinned by commit SHA (kept current by Dependabot), with `index_channel: operators` (neither
    chart ships a CompositionDefinition) and `CHARTS_PUBLISH_TOKEN`. Before anything is pushed it:
    - refuses a version that is not plain `X.Y.Z` (no `v`, no leading zeros, no pre-release or build
@@ -32,11 +32,14 @@ Marketplace installs from the helm index, not from GHCR.
      plain version).
 
    It then stamps `CHART_VERSION`, packages `chart/` and `config-chart/`, and pushes both to
-   `oci://ghcr.io/krateo-blueprints/charts`. Next it pulls back exactly what it pushed, so the
+   `oci://ghcr.io/krateo-blueprints/charts`. Next it pulls back both charts of the release, so the
    index gets the bytes GHCR holds, and publishes them through the organisation's publisher,
    `publish-chart`. That succeeds only once
    `https://krateo-blueprints.github.io/charts/operators/index.yaml` lists both charts and each
-   installs anonymously.
+   installs anonymously. A chart already published with identical contents is skipped at the push
+   but still sent to the index, so if a run pushed and then failed to index, re-running the release
+   for the same tag finishes it (2.1.0; on 2.0.0 the re-run showed green and left the index
+   without it).
 
 **Rehearsal:** a manual run of `release-oci.yaml` (`workflow_dispatch`) defaults to `dry_run`. It
 runs every check and builds every package, pushes nothing, and uploads the packages as the

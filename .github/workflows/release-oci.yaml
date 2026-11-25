@@ -1,7 +1,7 @@
 # Publishes this repo's two Helm charts (azuredevops-provider-kog, azuredevops-provider-kog-config) on a
 # release tag, twice and with the same bytes, as krateo-blueprints/charts PUBLISHING.md requires: to GHCR,
 # and to the helm index the Marketplace installs from. Both are done by ONE call to the org-wide reusable
-# release-oci 2.0.0 (this file supplies the triggers, our OCI path, the index channel and the token), so
+# release-oci 2.1.0 (this file supplies the triggers, our OCI path, the index channel and the token), so
 # "identical across every chart repo" is structural, not a copy kept in step. The repo-specific checks that
 # the shared workflow does not make run first, in `preflight`.
 #
@@ -27,8 +27,9 @@ on:
 
 jobs:
   # Everything that can refuse the release refuses it HERE, before GHCR holds anything. A failure after
-  # the GHCR push would leave a version in GHCR and missing from the index (unpublished, per rule 1), and
-  # the shared release-oci skips identical contents on a re-run, so that half-state would be hard to see.
+  # the GHCR push would leave a version in GHCR and missing from the index (unpublished, per rule 1). Since
+  # 2.1.0 the shared release-oci finishes that on a re-run of the same tag (it indexes every chart of the
+  # release, pushed then or already published); refusing first still means there is nothing to finish.
   preflight:
     runs-on: ubuntu-latest
     permissions:
@@ -107,18 +108,19 @@ jobs:
           python3 hack/check-retracted.py
 
 
-  # The org's shared release, 2.0.0. Before anything is pushed it runs the release preflight (a plain X.Y.Z
+  # The org's shared release, 2.1.0. Before anything is pushed it runs the release preflight (a plain X.Y.Z
   # version, PUBLISHING.md rules 12-13; this repo has no hack/release-preflight hook), checks the index token
   # for presence and shape (index-preflight), refuses a published version whose contents differ (skipping one
   # whose contents are identical), and passes every package through the index's own content gate (channel,
-  # complete archive, sources, plain version). Then it pushes both charts to GHCR, pulls back exactly what it
-  # pushed, and indexes those bytes through publish-chart (PUBLISHING.md rule 1). `index_channel: operators`:
+  # complete archive, sources, plain version). Then it pushes both charts to GHCR, pulls back every chart of the
+  # release (pushed by this run, or already published with identical contents, so a re-run finishes a release
+  # whose index step failed), and indexes those bytes through publish-chart (PUBLISHING.md rule 1). `index_channel: operators`:
   # neither chart ships a CompositionDefinition, and the publisher refuses a non-blueprint in `blueprints`.
   # Pinned by full commit SHA: it receives CHARTS_PUBLISH_TOKEN, an org-wide write token. Dependabot keeps it
   # current. A manual run defaults to dry_run (build and check everything, push nothing).
   release-oci:
     needs: preflight
-    uses: krateo-platformops/.github/.github/workflows/release-oci.yaml@7da11cb60cee5cbfc7d9e8c9328692807b43cefd # 2.0.0
+    uses: krateo-platformops/.github/.github/workflows/release-oci.yaml@aa90d48e1a101d5e9b3e547bca116b97c49513b5 # 2.1.0
     permissions:
       contents: read
       packages: write

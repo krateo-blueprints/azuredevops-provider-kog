@@ -11,6 +11,15 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-25 — the release runs on release-oci 2.1.0
+
+- `release-oci.yaml` calls the shared `release-oci.yaml` 2.1.0 (from 2.0.0), with the same inputs,
+  secret and permissions. 2.1.0 indexes every chart of the release, including one skipped at the
+  push as already published, so re-running a release whose index step failed finishes it. On 2.0.0
+  that re-run showed green and left the chart out of the index.
+- 2.2.0 is not adopted: it adds pre-releases for charts that are never indexed, and moves its
+  publisher pin to charts 1.11.0, whose index path had not yet run a release end to end.
+
 ## 2026-11-25 — 0.92.0 not pinned; a known issue for `CreateRefusedPersistently`
 
 - oasgen-provider 0.92.0 was tested and is not pinned; the chart stays on 0.91.1. The 12 live suites
