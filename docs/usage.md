@@ -148,6 +148,35 @@ Each kind had exactly one matching object afterwards. Not measured: the two crea
 same moment, a `Group` without `spec.scopeDescriptor`, and the retry itself running into an object
 made by another writer.
 
+### Known issue: one failed read restarts the hour before `CreateRefusedPersistently`
+
+`CreateRefusedPersistently` is reported once a refused create has gone an hour without the resource
+becoming Ready, and that hour is counted from `Ready`'s `lastTransitionTime`. A single error while
+the controller reads the resource from Azure DevOps (a 503, for example) sets
+`Ready=Unknown/ObserveFailed` for a moment. When `Ready` returns to `False`, its
+`lastTransitionTime` is new, so the hour starts again and the reason reads `Creating` until it has
+passed (oasgen-provider#929, open). The controller keeps retrying throughout; only the report is
+delayed.
+
+Measured on 0.91.1 and 0.92.0 on 2026-11-25, with the hour shortened to 60 s
+(`REST_CONTROLLER_CREATE_REFUSAL_REPORT_AFTER`). A `GitRepository` with a name Azure DevOps refuses
+reached `CreateRefusedPersistently`. Its `GitRepositoryConfiguration`'s `findby` api-version was
+then set, until the next read, to a value Azure DevOps answers with 400, and restored. Every write
+to the CR was recorded, and both versions gave the same sequence:
+
+| | `Ready` | `lastTransitionTime` |
+|---|---|---|
+| Before the fault | `False/CreateRefusedPersistently` | unchanged over 240 s |
+| The failed read | `Unknown/ObserveFailed` | new |
+| Next write | `False/Creating` | new again |
+| One resync later | `False/CreateRefusedPersistently` | the one from `Creating` |
+
+The same thing happened unprovoked on 0.92.0, during a regression run: one 503 from Azure DevOps,
+1 h 4 min after the first refusal, took a CR from `CreateRefusedPersistently` back to `Creating`
+with a new `lastTransitionTime`. If you alert on `CreateRefusedPersistently`, a refused create can
+stay at `Creating` past the hour; "Cannot observe external resource" in the controller log shows
+when a read failed.
+
 ### Upgrading oasgen-provider to 0.91.1
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
@@ -281,7 +310,10 @@ expect:
     a `GitRepository` whose name Azure DevOps refused with 400 read
     `Ready=False/CreateRefusedPersistently` "(last status 400)" when checked after 188 minutes,
     with exactly one `Ready` condition and its original `lastTransitionTime`. On 0.91.1, sampled
-    every 15 seconds, the reason arrived 1 h 1 min after the first refusal. The controller keeps retrying on
+    every 15 seconds, the reason arrived 1 h 1 min after the first refusal. One failed read of
+    the resource restarts that hour
+    ([known issue](#known-issue-one-failed-read-restarts-the-hour-before-createrefusedpersistently)).
+    The controller keeps retrying on
     every resync; the message says so. On 0.85.0 to 0.86.0 the reason never appeared (measured on
     0.85.2 and 0.86.0), so alert on it from 0.87.0 on. A network error during one of those retries
     can move the CR to `CreateOutcomeUnknown` instead, where it stays (measured on 0.89.0 and

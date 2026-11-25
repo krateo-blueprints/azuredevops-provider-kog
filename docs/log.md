@@ -11,6 +11,19 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-25 — 0.92.0 not pinned; a known issue for `CreateRefusedPersistently`
+
+- oasgen-provider 0.92.0 was tested and is not pinned; the chart stays on 0.91.1. The 12 live suites
+  passed (194 checks), and the other probes and the `Run` lost-response trials matched 0.91.1.
+  But `PolicyBuildValidation`'s `settings.validDuration` becomes a `number` there (#922), and a
+  fraction such as 90.5, which 0.91.1 refuses at apply, is accepted and never converges
+  (oasgen-provider#927): the controller reads it from the CR as 90 while Azure DevOps holds 90.5,
+  updates it four times, then reports `DriftNotConverging`. `Ready` never became `True`.
+- **New known issue, oasgen-provider#929:** one failed read of the resource restarts the hour before
+  `CreateRefusedPersistently`. Seen after a 503 in the 0.92.0 regression run, then reproduced on
+  0.91.1 and 0.92.0 by failing one read on purpose. See
+  [usage](./usage.md#known-issue-one-failed-read-restarts-the-hour-before-createrefusedpersistently).
+
 ## 2026-11-24 — oasgen-provider 0.91.1 (a clearer message for a stuck create; two known issues measured further)
 
 - Pinned oasgen-provider 0.91.1, from 0.90.0 (0.91.0 published no charts and is retracted). The
