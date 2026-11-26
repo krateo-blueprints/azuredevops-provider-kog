@@ -1,7 +1,7 @@
 ---
 type: Usage
 title: azuredevops-provider-kog — usage
-description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.91.1, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
+description: How to install azuredevops-provider-kog on a cluster running oasgen-provider 0.96.0, provide the Azure DevOps PAT, know what the controller logs unredacted, and migrate from the unmigrated classic provider or legacy KOG chart.
 resource: oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog
 tags: [krateo, kog, usage, install, migration]
 timestamp: 2026-11-07T00:00:00Z
@@ -11,8 +11,8 @@ timestamp: 2026-11-07T00:00:00Z
 
 ## Prerequisites
 
-- Kubernetes **>= 1.36** (required by the oasgen-provider 0.91.1 chart).
-- oasgen-provider **0.91.1**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
+- Kubernetes **>= 1.36** (required by the oasgen-provider 0.96.0 chart).
+- oasgen-provider **0.96.0**: install the `oasgen-provider-crds` chart, then `oasgen-provider`.
   [examples/dev-cluster](../examples/dev-cluster/README.md) has the commands.
 - An Azure DevOps PAT in a Secret. The PAT goes in the Configuration's basic-auth `password`.
 
@@ -20,7 +20,7 @@ timestamp: 2026-11-07T00:00:00Z
 
 ```sh
 helm install azuredevops-provider-kog oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog \
-  --version 0.17.0 --namespace krateo-system
+  --version 0.18.0 --namespace krateo-system
 ```
 
 Both charts are also in the krateo-blueprints helm index (`operators` channel), with the same bytes.
@@ -46,7 +46,7 @@ kubectl -n krateo-system create secret generic azuredevops-pat \
   --from-literal=username=kog --from-literal=token="$AZURE_DEVOPS_PAT"
 helm install azuredevops-provider-kog-config \
   oci://ghcr.io/krateo-blueprints/charts/azuredevops-provider-kog-config \
-  --version 0.17.0 --namespace krateo-system
+  --version 0.18.0 --namespace krateo-system
 ```
 
 Use a PAT scoped to one organization: global PATs stop working on 2026-12-01.
@@ -70,7 +70,7 @@ logs only to those who may read the Secrets.
 from at least 0.70.0), on the 15 kinds with a `findby`: `CheckApproval`, `CheckExclusiveLock`,
 `CheckRequiredTemplate`, `Environment`, `Feed`, `GitRepository`, `Group`, `Pipeline`, `PullRequest`,
 `Queue`, the four `ServiceEndpoint*` kinds and `TeamProject`. Reported upstream as
-oasgen-provider#901; not fixed in any release yet.
+oasgen-provider#901; not fixed in any release yet (present in 0.96.0, measured).
 
 When a create request fails at the network level, with no HTTP status (for example `connection
 reset by peer`), the controller cannot tell whether Azure DevOps made the object. Before trying
@@ -94,8 +94,13 @@ waits with it.
   (`read: connection reset by peer`). The CR read `Ready=False/CreateOutcomeUnknown` 5 seconds
   later and stayed there for the 12 minutes it was watched. A plain `kubectl delete` had not
   completed after 120 seconds.
+- **Measured on 0.96.0** (2026-11-25, one controller pod, no restart): the same refused
+  `GitRepository`, 33 minutes after its first refusal, had one retry reset (`read: connection reset
+  by peer`) and has read `Ready=False/CreateOutcomeUnknown` since, with its `lastTransitionTime`
+  unchanged.
 - **How often:** in the failed `GitRepository` creates logged in these runs, 1 of 303 was a reset
-  on 0.90.0 and 1 of 548 on 0.91.1. Two resets are too few for a rate.
+  on 0.90.0, 1 of 548 on 0.91.1, 0 of 444 on 0.94.0 and 1 of 71 on 0.96.0 (the retries stop once
+  the CR is stuck). Three resets are too few for a rate.
 - **Not measured:** a create Azure DevOps would accept, interrupted naturally. A CR put into that
   state by hand (below) behaves the same way.
 
@@ -146,19 +151,27 @@ it. It did on Keycloak.
 
 Each kind had exactly one matching object afterwards. Not measured: the two creates arriving at the
 same moment, a `Group` without `spec.scopeDescriptor`, and the retry itself running into an object
-made by another writer.
+made by another writer. Still open at 0.96.0.
 
-### Known issue: one failed read restarts the hour before `CreateRefusedPersistently`
+### Fixed in 0.96.0: one failed read no longer restarts the hour before `CreateRefusedPersistently`
 
 `CreateRefusedPersistently` is reported once a refused create has gone an hour without the resource
-becoming Ready, and that hour is counted from `Ready`'s `lastTransitionTime`. A single error while
-the controller reads the resource from Azure DevOps (a 503, for example) sets
-`Ready=Unknown/ObserveFailed` for a moment. When `Ready` returns to `False`, its
-`lastTransitionTime` is new, so the hour starts again and the reason reads `Creating` until it has
-passed (oasgen-provider#929, open). The controller keeps retrying throughout; only the report is
-delayed.
+becoming Ready. Up to 0.95.0 that hour was counted from `Ready`'s `lastTransitionTime`. A single
+error while the controller reads the resource from Azure DevOps (a 503, for example) sets
+`Ready=Unknown/ObserveFailed` for a moment, and when `Ready` returned to `False` its
+`lastTransitionTime` was new, so the hour started again and the reason read `Creating` until it had
+passed (oasgen-provider#929). The controller kept retrying throughout; only the report was delayed.
 
-Measured on 0.91.1 and 0.92.0 on 2026-11-25, with the hour shortened to 60 s
+**From 0.96.0 the hour is counted from the annotation `krateo.io/create-refused-since`**, written at
+the first refusal. A failed read still sets `Ready=Unknown/ObserveFailed` for a moment and still
+gives `Ready` a new `lastTransitionTime`, so do not time the refusal from that field; the reason
+comes back at the next write, and its message counts from the first refusal. Measured on 0.96.0
+with the same fault as below: `CreateRefusedPersistently` "not Ready for 1m49s", then the failed
+read, then 4 seconds later `CreateRefusedPersistently` "not Ready for 7m53s", with the annotation
+unchanged. Upgrading to 0.96.0 restarts the reporting period once for a resource already refused
+across the upgrade (it has no annotation yet; oasgen-provider's reading, not measured here).
+
+Before 0.96.0, measured on 0.91.1 and 0.92.0 on 2026-11-25, with the hour shortened to 60 s
 (`REST_CONTROLLER_CREATE_REFUSAL_REPORT_AFTER`). A `GitRepository` with a name Azure DevOps refuses
 reached `CreateRefusedPersistently`. Its `GitRepositoryConfiguration`'s `findby` api-version was
 then set, until the next read, to a value Azure DevOps answers with 400, and restored. Every write
@@ -171,23 +184,22 @@ to the CR was recorded, and both versions gave the same sequence:
 | Next write | `False/Creating` | new again |
 | One resync later | `False/CreateRefusedPersistently` | the one from `Creating` |
 
-The same thing happened unprovoked on 0.92.0, during a regression run: one 503 from Azure DevOps,
-1 h 4 min after the first refusal, took a CR from `CreateRefusedPersistently` back to `Creating`
-with a new `lastTransitionTime`. If you alert on `CreateRefusedPersistently`, a refused create can
-stay at `Creating` past the hour; "Cannot observe external resource" in the controller log shows
-when a read failed.
+The same thing happened unprovoked on 0.92.0 and on 0.93.0, during regression runs: one 503 from
+Azure DevOps took a CR from `CreateRefusedPersistently` back to `Creating` with a new
+`lastTransitionTime`. "Cannot observe external resource" in the controller log shows when a read
+failed.
 
-### Upgrading oasgen-provider to 0.91.1
+### Upgrading oasgen-provider to 0.96.0
 
 Upgrade the `oasgen-provider-crds` chart first, then `oasgen-provider`, with a plain
 `helm upgrade` (no `--reset-values`, or your `rdc.env` settings are dropped). Both steps were
 measured on disposable GKE clusters with this chart's 25 kinds: 0.57.0 to 0.61.0, 0.61.0 to 0.62.0
-(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0, 0.66.0 to 0.69.0 and 0.69.0 to 0.71.0 (2026-11-15), 0.71.0 to 0.72.0 and 0.72.0 to 0.73.0 (2026-11-16), 0.73.0 to 0.74.0 and 0.73.0 to 0.76.0 in one step (2026-11-17), 0.76.0 to 0.84.0 in one step (2026-11-21), 0.84.0 to 0.85.2, 0.84.0 to 0.86.0, 0.86.0 to 0.87.0, 0.87.0 to 0.89.0 and 0.87.0 to 0.90.0 (2026-11-22), and 0.90.0 to 0.91.1 (2026-11-23).
+(2026-11-12), 0.62.0 to 0.63.1 and 0.63.1 to 0.64.0 (2026-11-13), 0.64.0 to 0.65.0 and 0.65.0 to 0.66.0 (2026-11-14), 0.66.0 to 0.68.0, 0.66.0 to 0.69.0 and 0.69.0 to 0.71.0 (2026-11-15), 0.71.0 to 0.72.0 and 0.72.0 to 0.73.0 (2026-11-16), 0.73.0 to 0.74.0 and 0.73.0 to 0.76.0 in one step (2026-11-17), 0.76.0 to 0.84.0 in one step (2026-11-21), 0.84.0 to 0.85.2, 0.84.0 to 0.86.0, 0.86.0 to 0.87.0, 0.87.0 to 0.89.0 and 0.87.0 to 0.90.0 (2026-11-22), 0.90.0 to 0.91.1 (2026-11-23), and 0.91.1 to 0.94.0 and 0.91.1 to 0.96.0 in one step (2026-11-25).
 Larger jumps were not run on
 their own. What to
 expect:
 
-- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.91.1-4e27614f…`) with no
+- Every RestDefinition is regenerated (`status.generatorBuild` becomes `0.96.0-5074299…`) with no
   reconciler error and no provider restart. The status-update conflict 0.57.0 logs once per
   RestDefinition after an upgrade (oasgen-provider#579) is gone.
 - **Every generated controller rolls once**, because its image moves to the new
@@ -240,9 +252,9 @@ expect:
   - A kind that declares `get` but has no identifier recorded now reports `Ready=False`
     (`NoIdentifierRecorded`) instead of assuming it is up to date (oasgen-provider#682, #687).
     All 10 kinds here without a `findby` declare `get`, so all 10 are covered. In the live suites
-    from 0.71.0 to 0.76.0, and on 0.84.0, 0.86.0, 0.87.0, 0.90.0 and 0.91.1, no CR reached that state, or the
+    from 0.71.0 to 0.76.0, and on 0.84.0, 0.86.0, 0.87.0, 0.90.0, 0.91.1, 0.94.0 and 0.96.0, no CR reached that state, or the
     old "assumed up to date" one (between 451 and 479 sampled `Ready` conditions per run up to 0.76.0,
-    1293 across the two 0.84.0 runs, 779 on 0.86.0, 757 across the two 0.87.0 runs, 756 on 0.90.0 and 744 on 0.91.1,
+    1293 across the two 0.84.0 runs, 779 on 0.86.0, 757 across the two 0.87.0 runs, 756 on 0.90.0, 744 on 0.91.1, 715 on 0.94.0 and 718 on 0.96.0,
     every one with a reason).
 - **Fixed in 0.71.0, measured: another writer on the CR during its create no longer duplicates
   the Azure DevOps object** (oasgen-provider#692; fixed by #693 in 0.70.0 and #697 in 0.71.0).
@@ -277,6 +289,32 @@ expect:
   Measured by rendering the 0.84.0 chart with `--set rdc.metrics.port=8080`. At the default of 0 the
   block is not rendered and 0.84.0 works. On 0.80.0 and earlier the chart refuses the value. On
   0.86.0 and later the same render parses, with the `metrics` port alongside `http` and `health`.
+- **New in 0.92.0 to 0.96.0 (this chart went from 0.91.1 to 0.96.0 in one step):**
+  - **`PolicyBuildValidation`'s `spec.settings.validDuration` is a `number`, not an `integer`**
+    (oasgen-provider#922): the only one of the 1587 generated fields whose type changed. A fraction
+    such as `90.5`, which 0.91.1 refuses at apply, is accepted and converges from 0.94.0 (#927):
+    measured `Ready=True`, Azure DevOps holding `90.5`, and the policy's revision unchanged over 400
+    s. **Do not run 0.92.0 or 0.93.0 with a fraction there**: they accept it, read it back as
+    `90`, update the policy on each of the next four resyncs, then report `DriftNotConverging` and
+    stop updating (measured on both). Whole numbers behave as before.
+  - The status-write path changed with that fix: a fractional value from Azure DevOps now reaches
+    `status` as a number. This chart's 48 integer status fields are ids, revisions, versions and
+    generations, and over the 12 live suites on 0.94.0 and 0.96.0 the API server refused 0 status
+    writes.
+  - **RestDefinition conditions** (0.95.0, provider-runtime v1.21.1): `ManagementPolicyValid` is
+    gone. An invalid `krateo.io/management-policy` annotation on a RestDefinition is now reported
+    as `Synced=False/ManagementPolicyInvalid` on the RestDefinition itself. This chart's
+    RestDefinitions carry no annotations; measured on 0.96.0, all 25 were `Ready=True` and
+    `Synced=True`, with `Ready`, `Synced` and `ExistenceAnswerable` as their only conditions.
+  - A `statusSchema` on a create, update or delete reference is now refused at apply
+    (oasgen-provider#925); it used to be ignored. This chart sets none, and all 25 RestDefinitions
+    applied.
+  - `CreateRefusedPersistently` survives a failed read ([fixed in 0.96.0](#fixed-in-0960-one-failed-read-no-longer-restarts-the-hour-before-createrefusedpersistently)).
+  - A drift report now names the type of each value in the controller's debug log (#928), and an
+    empty object the API returns for a declared-empty field no longer counts as drift (#926). Not
+    measured here beyond the logs.
+  - **Still present:** the [network-error known issue](#known-issue-a-create-interrupted-by-a-network-error-can-leave-a-cr-stuck)
+    (measured on 0.96.0) and the [refused-create retry](#known-issue-a-refused-create-is-retried-without-looking-the-object-up).
 - **New in 0.91.1 (this chart went from 0.90.0 to 0.91.1; 0.91.0 is retracted, skip it):**
   - The message of a create whose outcome is unknown now says that removing
     `krateo.io/external-create-pending` enqueues a create immediately, so removing it while the
@@ -310,9 +348,8 @@ expect:
     a `GitRepository` whose name Azure DevOps refused with 400 read
     `Ready=False/CreateRefusedPersistently` "(last status 400)" when checked after 188 minutes,
     with exactly one `Ready` condition and its original `lastTransitionTime`. On 0.91.1, sampled
-    every 15 seconds, the reason arrived 1 h 1 min after the first refusal. One failed read of
-    the resource restarts that hour
-    ([known issue](#known-issue-one-failed-read-restarts-the-hour-before-createrefusedpersistently)).
+    every 15 seconds, the reason arrived 1 h 1 min after the first refusal. Up to 0.95.0, one failed
+    read of the resource restarted that hour ([fixed in 0.96.0](#fixed-in-0960-one-failed-read-no-longer-restarts-the-hour-before-createrefusedpersistently)).
     The controller keeps retrying on
     every resync; the message says so. On 0.85.0 to 0.86.0 the reason never appeared (measured on
     0.85.2 and 0.86.0), so alert on it from 0.87.0 on. A network error during one of those retries
@@ -469,7 +506,7 @@ expect:
   recorded the create as failed and sent the same POST again. On kinds where Azure DevOps accepts an
   identical create (`Run`, `PolicyStatus`, `CheckTask`, measured), that left extra objects, and the CR
   tracked only the last.
-  - **Measured on `Run`** (2026-11-16, 2026-11-21 for 0.84.0, 2026-11-22 for 0.86.0 and 0.87.0, 2026-11-23 for 0.90.0, and 2026-11-24 for 0.91.1; disposable GKE clusters). The controller's request timeout was
+  - **Measured on `Run`** (2026-11-16, 2026-11-21 for 0.84.0, 2026-11-22 for 0.86.0 and 0.87.0, 2026-11-23 for 0.90.0, 2026-11-24 for 0.91.1, and 2026-11-26 for 0.96.0; disposable GKE clusters). The controller's request timeout was
     set to the median POST latency, so roughly half the creates were cut:
 
     | oasgen-provider | Trials where a POST timed out | Re-sent | Runs for one CR |
@@ -482,22 +519,23 @@ expect:
     | 0.87.0 | 4 | 0 | 1, 1, 1, 1 |
     | 0.90.0 | 4 | 0 | 1, 1, 1, 1 |
     | 0.91.1 | 8 | 0 | 1, 1, 1, 1, 1, 1, 1, 1 |
+    | 0.96.0 | 7 | 0 | 1, 1, 1, 1, 1, 1, 1 |
 
     Controls: a trial at the default timeout, and every trial whose POST did not time out, left exactly
     one run. 0.73.0 has the same create path as 0.74.0 and was not measured separately.
-  - **What happens instead from 0.76.0 (measured on 0.76.0, 0.84.0, 0.86.0, 0.87.0, 0.90.0 and 0.91.1), for a kind with no `findby`:** the controller cannot check
+  - **What happens instead from 0.76.0 (measured on 0.76.0, 0.84.0, 0.86.0, 0.87.0, 0.90.0, 0.91.1 and 0.96.0), for a kind with no `findby`:** the controller cannot check
     whether the create landed, so it stops and waits. The CR shows `Ready=False` with reason
     `CreateOutcomeUnknown`, carries only the `krateo.io/external-create-pending` annotation, and its
     `Synced` message says `cannot determine creation result … this kind declares no findby verb`. The
     object exists once in Azure DevOps. Exposed: the same 6 kinds as the race above, whose `get`
     reads `status.id` or `status.pushId`.
-  - **Remedy, measured on 0.76.0 (1 CR), 0.84.0 (6 of 6), 0.86.0 (5 of 5), 0.87.0 (4 of 4), 0.90.0 (4 of 4) and 0.91.1 (8 of 8), each CR `Ready=True` about 3 minutes later with no new run:** find the object in Azure DevOps, write its id into the field the
+  - **Remedy, measured on 0.76.0 (1 CR), 0.84.0 (6 of 6), 0.86.0 (5 of 5), 0.87.0 (4 of 4), 0.90.0 (4 of 4), 0.91.1 (8 of 8) and 0.96.0 (7 of 7), each CR `Ready=True` about 3 minutes later with no new run:** find the object in Azure DevOps, write its id into the field the
     `get` reads, and wait one poll. For example:
     `kubectl patch runs.azuredevops.krateo.io <name> --subresource=status --type=merge -p '{"status":{"id":<id>}}'`.
     The patch must use `--subresource=status`; without it the API server accepts the patch and drops
     the status. On the measured CR, `Ready=True` followed about 3 minutes later with the same id. The
     controller added `external-create-succeeded` itself, and no new run was created. One CR on 0.76.0,
-    six on 0.84.0, five on 0.86.0, four on 0.87.0, four on 0.90.0 and eight on 0.91.1; the vendor's run ids were checked each time.
+    six on 0.84.0, five on 0.86.0, four on 0.87.0, four on 0.90.0, eight on 0.91.1 and seven on 0.96.0; the vendor's run ids were checked each time.
   - **When the object exists, do not remove the `krateo.io/external-create-pending` annotation**,
     whatever the `Synced` message suggests. On 0.76.0, removing it alone made the controller create again in the same
     second, and the existing object was left untracked. This was measured by github-provider-kog on
@@ -506,7 +544,7 @@ expect:
     matches nothing) reports `Creating` indefinitely, with nothing that points a person at it
     (oasgen-provider#758, reverted by #759 for 0.78.0). 15 of this chart's 25 kinds have a `findby`.
     On 0.76.0, which this release pins, that case reports `CreateOutcomeUnknown` instead. This was
-    oasgen-provider's reading of its source; the state was later measured on 0.89.0, 0.90.0 and 0.91.1, and
+    oasgen-provider's reading of its source; the state was later measured on 0.89.0, 0.90.0, 0.91.1 and 0.96.0, and
     it does not clear by itself (see [the known issue](#known-issue-a-create-interrupted-by-a-network-error-can-leave-a-cr-stuck)).
   - **Still on 0.73.0 to 0.75.0?** The duplicate shows as a CR carrying both
     `external-create-failed` and `external-create-succeeded`, with a Warning Event

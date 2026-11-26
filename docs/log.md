@@ -11,6 +11,36 @@ timestamp: 2026-11-07T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-26 — oasgen-provider 0.96.0 (fractions converge; the refused-create clock survives a failed read)
+
+- Pinned oasgen-provider 0.96.0, from 0.91.1, in one step. The upgrade regenerated all 25
+  RestDefinitions (`0.96.0-5074299…`) with no reconciler error, and a carried `GitRepository` kept
+  its id. Live suites: 12/12, 194 checks. 718 `Ready` conditions sampled, all with a reason. The API
+  server refused 0 status writes over the suites, read from all 25 controller logs.
+- **oasgen-provider#927 fixed (0.94.0):** a fractional `PolicyBuildValidation` `validDuration`
+  (90.5) is `Ready`, with Azure DevOps holding 90.5 and no further update. Measured on 0.94.0 and
+  0.96.0. On 0.92.0 and 0.93.0 it never converged; this chart skipped both.
+- **oasgen-provider#929 fixed (0.96.0):** the same deliberately failed read that restarted the hour
+  on 0.91.1 left `CreateRefusedPersistently` back 4 seconds later, counting from the first refusal
+  (the `krateo.io/create-refused-since` annotation). `Ready` still turns `Unknown` for a moment, so
+  `lastTransitionTime` still moves.
+- **RestDefinition conditions (0.95.0, provider-runtime v1.21.1):** `ManagementPolicyValid` is gone,
+  and an invalid management-policy annotation would now show as `Synced=False` on the
+  RestDefinition. Measured on 0.96.0: all 25 `Ready=True` and `Synced=True`.
+- **oasgen-provider#901 measured again on 0.96.0:** a refused `GitRepository` got stuck by itself
+  after a connection reset, 33 minutes after its first refusal. Still open, as is #919.
+- Unchanged and re-measured on 0.96.0:
+  - `ExistenceAnswerable=False` on exactly the six kinds.
+  - A stranded `GitPush` deletes in 1 s.
+  - Duplicate `findby` matches are refused.
+  - Both replicas stay Ready.
+  - The controller-restart trials recovered 4 of 4, with a passing control.
+  - A lost create response on `Run`: 7 trials lost the response, 0 re-sent, 7 of 7 cleared by
+    writing `status.id`.
+- Tested on the way and not pinned: 0.94.0 (all rows as above, the same day) and 0.95.0 (a run
+  stopped at its start, when 0.96.0 was announced). 0.97.0 was released during the 0.96.0 tests and
+  is not measured yet.
+
 ## 2026-11-25 — the release runs on release-oci 2.1.0
 
 - `release-oci.yaml` calls the shared `release-oci.yaml` 2.1.0 (from 2.0.0), with the same inputs,
@@ -31,7 +61,7 @@ Curated history; release notes live in GitHub Releases.
 - **New known issue, oasgen-provider#929:** one failed read of the resource restarts the hour before
   `CreateRefusedPersistently`. Seen after a 503 in the 0.92.0 regression run, then reproduced on
   0.91.1 and 0.92.0 by failing one read on purpose. See
-  [usage](./usage.md#known-issue-one-failed-read-restarts-the-hour-before-createrefusedpersistently).
+  [usage](./usage.md#fixed-in-0960-one-failed-read-no-longer-restarts-the-hour-before-createrefusedpersistently).
 
 ## 2026-11-24 — oasgen-provider 0.91.1 (a clearer message for a stuck create; two known issues measured further)
 
